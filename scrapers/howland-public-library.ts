@@ -26,14 +26,14 @@ const EventSchema = z.object({
   start_at: z
     .string()
     .regex(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/,
-      "start_at must be in ISO format YYYY-MM-DDThh:mm:ss"
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:.\d{3}Z)?$/,
+      "start_at must be in ISO format YYYY-MM-DDThh:mm:ss or YYYY-MM-DDThh:mm:ss.sssZ"
     ),
   end_at: z
     .string()
     .regex(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/,
-      "end_at must be in ISO format YYYY-MM-DDThh:mm:ss"
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:.\d{3}Z)?$/,
+      "end_at must be in ISO format YYYY-MM-DDThh:mm:ss or YYYY-MM-DDThh:mm:ss.sssZ"
     )
     .optional(),
   url: z.string().url("URL must be a valid URL"),
@@ -162,6 +162,27 @@ export async function scrape(targetDate: Date): Promise<Event[]> {
           const isPM = period.toUpperCase() === "PM";
           startTime = convert12to24(startHour, startMin, isPM);
           endTime = convert12to24(endHour, endMin, isPM);
+        } else {
+          // Try alternate format with single period, like "7-8 PM"
+          const simplifiedMatch = timeText.match(
+            /(\d{1,2})(?:—|-|\s+to\s+)(\d{1,2})\s*(AM|PM)/i
+          );
+
+          if (simplifiedMatch) {
+            const [, startHour, endHour, period] = simplifiedMatch;
+
+            // Convert 12-hour format to 24-hour format
+            const convert12to24 = (hour: string, isPM: boolean): string => {
+              let h = Number.parseInt(hour, 10);
+              if (isPM && h !== 12) h += 12;
+              if (!isPM && h === 12) h = 0;
+              return `${h.toString().padStart(2, "0")}:00:00`;
+            };
+
+            const isPM = period.toUpperCase() === "PM";
+            startTime = convert12to24(startHour, isPM);
+            endTime = convert12to24(endHour, isPM);
+          }
         }
 
         // Get the description
@@ -183,10 +204,20 @@ export async function scrape(targetDate: Date): Promise<Event[]> {
 
         // Update times only if they exist
         const [datePart] = event.start_at.split("T");
-        event.start_at = startTime
-          ? `${datePart}T${startTime}`
-          : event.start_at;
-        event.end_at = endTime ? `${datePart}T${endTime}` : event.end_at;
+
+        if (startTime) {
+          // Format the date and time as ISO 8601 with timezone offset
+          const startDate = new Date(`${datePart}T${startTime}`);
+          event.start_at = startDate.toISOString();
+          console.log(`Parsed start time: ${startTime} -> ${event.start_at}`);
+        }
+
+        if (endTime) {
+          // Format the date and time as ISO 8601 with timezone offset
+          const endDate = new Date(`${datePart}T${endTime}`);
+          event.end_at = endDate.toISOString();
+          console.log(`Parsed end time: ${endTime} -> ${event.end_at}`);
+        }
       }
     }
 

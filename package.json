@@ -13,8 +13,11 @@
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
+		"@notionhq/client": "^2.3.0",
+		"@tryfabric/martian": "^1.2.4",
 		"@types/turndown": "^5.0.5",
 		"date-fns": "^4.1.0",
+		"dotenv": "^16.4.7",
 		"puppeteer": "^24.4.0",
 		"turndown": "^7.2.0",
 		"zod": "^3.24.2"
