@@ -212,8 +212,22 @@ export async function scrape(targetDate: Date): Promise<Event[]> {
 
 // Example usage
 if (import.meta.url === `file://${process.argv[1]}`) {
-  // Create date in local timezone
-  const targetDate = new Date(2025, 2, 1); // March 1, 2025
+  // Parse date from command line argument if provided
+  let targetDate: Date;
+
+  if (process.argv[2]) {
+    // Use the provided date string (format: YYYY-MM-DD)
+    const dateArg = process.argv[2];
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateArg)) {
+      console.error("Invalid date format. Please use YYYY-MM-DD");
+      process.exit(1);
+    }
+    targetDate = new Date(dateArg);
+  } else {
+    // Default to today if no date provided
+    targetDate = new Date();
+  }
+
   console.log("Target date:", targetDate.toISOString());
   console.log("Formatted month:", format(targetDate, "MMMM").toLowerCase());
   scrape(targetDate)
