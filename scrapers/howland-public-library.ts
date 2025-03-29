@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import type { Event } from "../types.js";
 import TurndownService from "turndown";
 import { z } from "zod";
+import { decode } from "html-entities";
 
 const BASE_URL = "https://beaconlibrary.assabetinteractive.com/calendar";
 
@@ -191,13 +192,11 @@ export async function scrape(targetDate: Date): Promise<Event[]> {
           (el) => el.innerHTML
         );
 
+        // Decode HTML entities in the title and description
+        event.title = decode(event.title);
+
         // First decode HTML entities
-        const decodedDescription = description
-          .replace(/&amp;/g, "&")
-          .replace(/&lt;/g, "<")
-          .replace(/&gt;/g, ">")
-          .replace(/&quot;/g, '"')
-          .replace(/&#039;/g, "'");
+        const decodedDescription = decode(description);
 
         // Then convert to Markdown
         event.description = turndownService.turndown(decodedDescription);
