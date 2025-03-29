@@ -47,6 +47,97 @@ export async function getDatabaseSchema() {
 }
 
 /**
+ * Retrieves events from Notion that have external IDs matching the provided list
+ * @param externalIds List of external IDs to check
+ * @returns Set of external IDs that already exist in Notion
+ */
+async function getExistingExternalIds(
+  externalIds: string[]
+): Promise<Set<string>> {
+  if (!databaseId) {
+    throw new Error("NOTION_DATABASE_ID environment variable is not set");
+  }
+
+  // If no external IDs provided, return empty set
+  if (externalIds.length === 0) {
+    return new Set<string>();
+  }
+
+  const existingIds = new Set<string>();
+  let hasMore = true;
+  let startCursor: string | undefined = undefined;
+
+  try {
+    console.log(
+      `Checking for ${externalIds.length} events that may already exist in Notion...`
+    );
+
+    // Notion API has limits on filter complexity, so we need to handle this in batches
+    // We'll process in batches of 10 external IDs at a time (adjust as needed)
+    const batchSize = 10;
+
+    for (let i = 0; i < externalIds.length; i += batchSize) {
+      const batchIds = externalIds.slice(i, i + batchSize);
+
+      // Paginate through all results for this batch of IDs
+      hasMore = true;
+      startCursor = undefined;
+
+      while (hasMore) {
+        // Create an OR filter for this batch of external IDs
+        const filter = {
+          or: batchIds.map((id) => ({
+            property: "External ID",
+            rich_text: {
+              equals: id,
+            },
+          })),
+        };
+
+        // Query the database for pages with matching external IDs
+        const response = await notion.databases.query({
+          database_id: databaseId,
+          filter: filter,
+          page_size: 100,
+          start_cursor: startCursor,
+        });
+
+        // Extract external IDs from the results
+        for (const page of response.results) {
+          // Check if it's a page object (which has properties)
+          if ("properties" in page) {
+            const externalIdProperty = page.properties["External ID"];
+
+            if (
+              externalIdProperty.type === "rich_text" &&
+              externalIdProperty.rich_text.length > 0
+            ) {
+              const externalId = externalIdProperty.rich_text[0].plain_text;
+              if (externalId) {
+                existingIds.add(externalId);
+              }
+            }
+          }
+        }
+
+        // Check if there are more results
+        hasMore = response.has_more;
+        startCursor = response.next_cursor || undefined;
+      }
+    }
+
+    console.log(
+      `Found ${existingIds.size} events that already exist in Notion`
+    );
+    return existingIds;
+  } catch (error) {
+    console.error("Error checking for existing events:", error);
+    // In case of error, return an empty set
+    return new Set<string>();
+  }
+}
+
+/**
  * Posts multiple events to a Notion database
  * @param events Array of events to post to Notion
  * @returns Array of created page IDs
@@ -56,7 +147,13 @@ export async function postEventsToNotion(events: Event[]): Promise<string[]> {
     throw new Error("NOTION_DATABASE_ID environment variable is not set");
   }
 
-  // First, retrieve the database to get available location options
+  // Extract all external IDs from the events we're about to post
+  const eventExternalIds = events.map((event) => event.external_id);
+
+  // Check which external IDs already exist in the database
+  const existingIds = await getExistingExternalIds(eventExternalIds);
+
+  // Retrieve the database to get available location options
   let locationOptions: { id: string; name: string }[] = [];
   try {
     const dbSchema = await notion.databases.retrieve({
@@ -79,10 +176,20 @@ export async function postEventsToNotion(events: Event[]): Promise<string[]> {
 
   const results: string[] = [];
   const errors: Error[] = [];
+  const skipped: string[] = [];
 
   // Process events sequentially to avoid rate limits
   for (const event of events) {
     try {
+      // Check if the event already exists in the database using the pre-fetched IDs
+      if (existingIds.has(event.external_id)) {
+        console.log(
+          `Skipping event "${event.title}" - already exists with external ID: ${event.external_id}`
+        );
+        skipped.push(event.external_id);
+        continue;
+      }
+
       // Find best matching location from available options
       let locationName = event.location;
 
@@ -164,6 +271,9 @@ export async function postEventsToNotion(events: Event[]): Promise<string[]> {
         children: descriptionBlocks as BlockObjectRequest[],
       });
 
+      // Add the new external ID to our local cache to avoid duplicates in the same batch
+      existingIds.add(event.external_id);
+
       console.log(`Successfully added event "${event.title}" to Notion`);
       results.push(response.id);
 
@@ -179,8 +289,14 @@ export async function postEventsToNotion(events: Event[]): Promise<string[]> {
     console.warn(`${errors.length} events failed to post to Notion`);
   }
 
+  if (skipped.length > 0) {
+    console.log(
+      `Skipped ${skipped.length} events that already exist in Notion`
+    );
+  }
+
   console.log(
-    `Successfully posted ${results.length} of ${events.length} events to Notion`
+    `Successfully posted ${results.length} of ${events.length} events to Notion (${skipped.length} skipped, ${errors.length} failed)`
   );
   return results;
 }
