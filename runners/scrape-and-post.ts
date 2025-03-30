@@ -39,6 +39,13 @@ async function main() {
       description: "End date for scraping (YYYY-MM-DD, defaults to start-date)",
       type: "string",
     })
+    .option("dry-run", {
+      alias: "n",
+      description:
+        "Perform scraping but do not post to Notion, just log results",
+      type: "boolean",
+      default: false,
+    })
     .check((argv) => {
       // Validate date formats
       const dateFormat = "yyyy-MM-dd";
@@ -127,9 +134,14 @@ async function main() {
     } else {
       console.log(`✅ Found ${events.length} events.`);
 
-      // 4. Post to Notion
-      console.log("📤 Posting events to Notion...");
-      await postEventsToNotion(events); // Assuming postEventsToNotion handles its own logging
+      // 4. Post to Notion or Log for Dry Run
+      if (argv.dryRun) {
+        console.log("\n🌵 Dry Run Mode: Events found but not posted:");
+        console.log(JSON.stringify(events, null, 2)); // Pretty print the events
+      } else {
+        console.log("📤 Posting events to Notion...");
+        await postEventsToNotion(events); // Assuming postEventsToNotion handles its own logging
+      }
     }
 
     console.log("✨ Process completed successfully!");

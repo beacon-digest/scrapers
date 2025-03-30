@@ -7,12 +7,16 @@
 //
 // Or copy the .env.example file and fill in your values:
 // cp .env.example .env
-import { Client } from "@notionhq/client";
-import type { BlockObjectRequest } from "@notionhq/client/build/src/api-endpoints";
+import { Client, APIErrorCode, isNotionClientError } from "@notionhq/client";
+import type {
+  BlockObjectRequest,
+  CreatePageParameters,
+} from "@notionhq/client/build/src/api-endpoints";
 import type { Event } from "../types.js";
 import dotenv from "dotenv";
 import { markdownToBlocks } from "@tryfabric/martian";
 import { formatInTimeZone } from "date-fns-tz";
+import { marked } from "marked";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -141,8 +145,82 @@ async function getExistingExternalIds(
   }
 }
 
+// Define helper here so it's accessible
+const formatWithTimeZone = (
+  isoString: string | undefined
+): string | undefined => {
+  if (!isoString) return undefined;
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) {
+    console.warn(
+      `[Notion Poster] Invalid date string encountered: ${isoString}`
+    );
+    return undefined;
+  }
+  return formatInTimeZone(date, TIME_ZONE, "yyyy-MM-dd'T'HH:mm:ssXXX");
+};
+
+// Function to sanitize markdown links
+function sanitizeMarkdownLinks(markdown: string, baseUrl: string): string {
+  if (!markdown) return "";
+  try {
+    const tokens = marked.lexer(markdown);
+    const newTokens = tokens.map((token) => {
+      if (token.type === "link") {
+        const href = token.href;
+        if (href?.startsWith("/") && !href.startsWith("//")) {
+          // Prepend base URL to relative links
+          token.href = `${baseUrl}${href}`;
+          console.log(
+            `[Link Sanitize] Fixed relative link: ${href} -> ${token.href}`
+          );
+        } else if (
+          href &&
+          !href.startsWith("http") &&
+          !href.startsWith("mailto:") &&
+          !href.startsWith("#")
+        ) {
+          // Handle potentially invalid links (e.g., just text, ftp, etc.)
+          // Option: Remove link by returning just the text
+          console.warn(
+            `[Link Sanitize] Removing potentially invalid link: ${href} (text: ${token.text})`
+          );
+          // To remove, we would ideally alter the token type or structure,
+          // but marked's parser might still render it. A simple approach
+          // for now is to make the href a non-functional placeholder.
+          token.href = "#invalid-link";
+        }
+      }
+      // Recursively sanitize links within nested tokens (like list items)
+      if ("tokens" in token && token.tokens) {
+        token.tokens = token.tokens?.map((nestedToken) => {
+          if (nestedToken.type === "link") {
+            const nestedHref = nestedToken.href;
+            if (nestedHref?.startsWith("/") && !nestedHref.startsWith("//")) {
+              nestedToken.href = `${baseUrl}${nestedHref}`;
+            } else if (
+              nestedHref &&
+              !nestedHref.startsWith("http") &&
+              !nestedHref.startsWith("mailto:") &&
+              !nestedHref.startsWith("#")
+            ) {
+              nestedToken.href = "#invalid-link";
+            }
+          }
+          return nestedToken;
+        });
+      }
+      return token;
+    });
+    return marked.parser(newTokens);
+  } catch (err) {
+    console.error("[Link Sanitize] Error processing markdown:", err);
+    return markdown; // Return original markdown on error
+  }
+}
+
 /**
- * Posts multiple events to a Notion database
+ * Posts multiple events to a Notion database.
  * @param events Array of events to post to Notion
  * @returns Array of created page IDs
  */
@@ -179,13 +257,12 @@ export async function postEventsToNotion(events: Event[]): Promise<string[]> {
   }
 
   const results: string[] = [];
-  const errors: Error[] = [];
+  const errors: { eventTitle: string; error: Error }[] = [];
   const skipped: string[] = [];
 
-  // Process events sequentially to avoid rate limits
   for (const event of events) {
     try {
-      // Check if the event already exists in the database using the pre-fetched IDs
+      // Check if exists
       if (existingIds.has(event.external_id)) {
         console.log(
           `Skipping event "${event.title}" - already exists with external ID: ${event.external_id}`
@@ -194,15 +271,13 @@ export async function postEventsToNotion(events: Event[]): Promise<string[]> {
         continue;
       }
 
-      // Find best matching location from available options
+      // --- Location Matching ---
       let locationName = event.location;
-
       if (locationOptions.length > 0) {
-        // Try to find a partial match
         const matchingLocation = locationOptions.find(
           (option) =>
-            option.name.toLowerCase().includes(event.location.toLowerCase()) ||
-            event.location
+            option.name.toLowerCase().includes(locationName.toLowerCase()) ||
+            locationName
               .toLowerCase()
               .includes(option.name.toLowerCase().split(" (")[0])
         );
@@ -217,100 +292,77 @@ export async function postEventsToNotion(events: Event[]): Promise<string[]> {
         }
       }
 
-      // Convert markdown description to Notion blocks
-      const descriptionBlocks = markdownToBlocks(event.description);
-
-      // Create the page with properties
-      console.log(
-        `Posting event with start time: ${event.start_at} and end time: ${event.end_at}`
+      // --- Sanitize Description Links ---
+      // TODO: Determine baseUrl dynamically if needed
+      const baseUrlForLinks = "https://www.stanzabooks.com";
+      const sanitizedDescription = sanitizeMarkdownLinks(
+        event.description,
+        baseUrlForLinks
       );
 
-      // Format dates with Eastern Time Zone for Notion
-      const formatWithTimeZone = (isoString: string): string => {
-        const date = new Date(isoString);
-        // Format: 2025-04-16T10:00:00-04:00 (with correct Eastern Time offset)
-        return formatInTimeZone(date, TIME_ZONE, "yyyy-MM-dd'T'HH:mm:ssXXX");
-      };
-
+      // --- Common Data Prep ---
+      const descriptionBlocks = markdownToBlocks(sanitizedDescription);
       const startDateWithTz = formatWithTimeZone(event.start_at);
       const endDateWithTz = event.end_at
         ? formatWithTimeZone(event.end_at)
         : undefined;
 
+      if (!startDateWithTz) {
+        throw new Error(
+          `Failed to format start date timezone for ${event.title}`
+        );
+      }
+
+      // --- Construct Properties ---
+      const properties: CreatePageParameters["properties"] = {
+        Name: { title: [{ text: { content: event.title } }] },
+        Date: { date: { start: startDateWithTz, end: endDateWithTz } },
+        Location: { select: { name: locationName } },
+        "External ID": {
+          rich_text: [{ text: { content: event.external_id } }],
+        },
+        // Conditionally add Website only if event.url is present
+        ...(event.url && { Website: { url: event.url } }),
+      };
+
+      // --- Post to Notion ---
       console.log(
-        `Formatted with time zone - Start: ${startDateWithTz}, End: ${
-          endDateWithTz || "N/A"
-        }`
+        `Posting event "${event.title}" (URL: ${event.url || "(none)"})`
+      );
+      console.log(
+        `  Timezone: Start=${startDateWithTz}, End=${endDateWithTz || "N/A"}`
       );
 
       const response = await notion.pages.create({
-        parent: {
-          database_id: databaseId,
-        },
-        properties: {
-          // Match property names to database schema
-          Name: {
-            title: [
-              {
-                text: {
-                  content: event.title,
-                },
-              },
-            ],
-          },
-          Date: {
-            date: {
-              start: startDateWithTz,
-              end: endDateWithTz,
-            },
-          },
-          Website: {
-            url: event.url,
-          },
-          Location: {
-            select: {
-              name: locationName,
-            },
-          },
-          "External ID": {
-            rich_text: [
-              {
-                text: {
-                  content: event.external_id,
-                },
-              },
-            ],
-          },
-          // We don't have tags in our Event type, so we're not setting Tags property
-        },
-        // Add the description as blocks in the page content
+        parent: { database_id: databaseId },
+        properties: properties,
         children: descriptionBlocks as BlockObjectRequest[],
       });
 
-      // Add the new external ID to our local cache to avoid duplicates in the same batch
       existingIds.add(event.external_id);
-
       console.log(`Successfully added event "${event.title}" to Notion`);
       results.push(response.id);
-
-      // Add a small delay to avoid rate limiting
       await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (error) {
-      console.error(`Error adding event "${event.title}" to Notion:`, error);
-      errors.push(error as Error);
+      // --- Simple Error Handling ---
+      console.error(`Posting failed for "${event.title}":`, error);
+      errors.push({ eventTitle: event.title, error: error as Error });
+      // --- End Error Handling ---
+    }
+  } // End for loop
+
+  // --- Final Logging ---
+  if (errors.length > 0) {
+    console.warn(`${errors.length} events failed to post to Notion:`);
+    for (const e of errors) {
+      console.warn(`  - ${e.eventTitle}: ${e.error.message}`);
     }
   }
-
-  if (errors.length > 0) {
-    console.warn(`${errors.length} events failed to post to Notion`);
-  }
-
   if (skipped.length > 0) {
     console.log(
       `Skipped ${skipped.length} events that already exist in Notion`
     );
   }
-
   console.log(
     `Successfully posted ${results.length} of ${events.length} events to Notion (${skipped.length} skipped, ${errors.length} failed)`
   );

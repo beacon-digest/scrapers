@@ -14,6 +14,9 @@ importers:
       '@tryfabric/martian':
         specifier: ^1.2.4
         version: 1.2.4
+      '@types/marked':
+        specifier: ^6.0.0
+        version: 6.0.0
       '@types/turndown':
         specifier: ^5.0.5
         version: 5.0.5
@@ -29,6 +32,9 @@ importers:
       html-entities:
         specifier: ^2.5.5
         version: 2.5.5
+      marked:
+        specifier: ^15.0.7
+        version: 15.0.7
       puppeteer:
         specifier: ^24.4.0
         version: 24.4.0(typescript@5.8.2)
@@ -237,6 +243,10 @@ packages:
   '@tryfabric/martian@1.2.4':
     resolution: {integrity: sha512-g7SP7beaxrjxLnW//vskra07a1jsJowqp07KMouxh4gCwaF+ItHbRZN8O+1dhJivBi3VdasT71BPyk+8wzEreQ==}
     engines: {node: '>=15'}
+
+  '@types/marked@6.0.0':
+    resolution: {integrity: sha512-jmjpa4BwUsmhxcfsgUit/7A9KbrC48Q0q8KvnY107ogcjGgTFDlIL3RpihNpx2Mu1hM4mdFQjoVc4O6JoGKHsA==}
+    deprecated: This is a stub types definition. marked provides its own type definitions, so you do not need this installed.
 
   '@types/mdast@3.0.15':
     resolution: {integrity: sha512-LnwD+mUEfxWMa1QpDraczIn6k0Ee3SMicuYSSzS6ZYl2gKS09EClnJYGd8Du6rfc5r/GZEk5o1mRb8TaTj03sQ==}
@@ -619,6 +629,11 @@ packages:
 
   markdown-table@2.0.0:
     resolution: {integrity: sha512-Ezda85ToJUBhM6WGaG6veasyym+Tbs3cMAw/ZhOPqXiYsr0jgocBV3j3nx+4lk47plLlIqjwuTm/ywVI+zjJ/A==}
+
+  marked@15.0.7:
+    resolution: {integrity: sha512-dgLIeKGLx5FwziAnsk4ONoGwHwGPJzselimvlVskE9XLN4Orv9u2VA3GWw/lYUqjfA0rUT/6fqKwfZJapP9BEg==}
+    engines: {node: '>= 18'}
+    hasBin: true
 
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
@@ -1043,6 +1058,10 @@ snapshots:
       - encoding
       - supports-color
 
+  '@types/marked@6.0.0':
+    dependencies:
+      marked: 15.0.7
+
   '@types/mdast@3.0.15':
     dependencies:
       '@types/unist': 2.0.11
@@ -1417,6 +1436,8 @@ snapshots:
   markdown-table@2.0.0:
     dependencies:
       repeat-string: 1.6.1
+
+  marked@15.0.7: {}
 
   math-intrinsics@1.1.0: {}
 
