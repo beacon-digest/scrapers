@@ -48,12 +48,26 @@ const EventsArraySchema = z.array(EventSchema);
 // Type for validated events
 type ValidatedEvent = z.infer<typeof EventSchema>;
 
-export async function scrape(targetDate: Date): Promise<Event[]> {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox"],
-    timeout: 30000,
-  });
+export async function scrape(
+  targetDate: Date,
+  externalBrowser?: puppeteer.Browser
+): Promise<Event[]> {
+  // Use provided browser or create a new one if not provided
+  const browser =
+    externalBrowser ||
+    (await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      timeout: 60000, // Increase timeout to 60 seconds
+      // Use the installed browser instead of downloading a new one
+      executablePath:
+        process.platform === "darwin" && process.arch === "arm64"
+          ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+          : undefined,
+    }));
+
+  // Set a flag to determine if we should close the browser at the end
+  const shouldCloseBrowser = !externalBrowser;
 
   try {
     const page = await browser.newPage();
@@ -324,7 +338,10 @@ export async function scrape(targetDate: Date): Promise<Event[]> {
     console.error("Error scraping events:", error);
     return [];
   } finally {
-    await browser.close();
+    // Only close the browser if we created it
+    if (shouldCloseBrowser) {
+      await browser.close();
+    }
   }
 }
 

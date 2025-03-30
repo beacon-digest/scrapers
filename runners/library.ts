@@ -2,6 +2,7 @@ import { scrape } from "../scrapers/howland-public-library.js";
 import { postEventsToNotion } from "../api/notion-poster.js";
 import type { Event } from "../types.js";
 import dotenv from "dotenv";
+import puppeteer from "puppeteer";
 
 // Load environment variables
 dotenv.config();
@@ -47,6 +48,46 @@ function getDatesInRange(startDate: Date, endDate: Date): Date[] {
 }
 
 /**
+ * Process multiple dates with a single shared browser instance
+ * @param dates Array of dates to process
+ * @returns Array of all events found across all dates
+ */
+async function scrapeWithSharedBrowser(dates: Date[]): Promise<Event[]> {
+  // Launch browser once with increased timeout and appropriate options for Apple Silicon
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    timeout: 60000, // Increase timeout to 60 seconds
+    // Use the installed browser instead of downloading a new one
+    executablePath:
+      process.platform === "darwin" && process.arch === "arm64"
+        ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+        : undefined,
+  });
+
+  const allEvents: Event[] = [];
+
+  try {
+    // Process each date with the same browser instance
+    for (const date of dates) {
+      console.log(`\nProcessing date: ${formatDate(date)}`);
+      try {
+        const events = await scrape(date, browser);
+        console.log(`Found ${events.length} events for ${formatDate(date)}`);
+        allEvents.push(...events);
+      } catch (error) {
+        console.error(`Error scraping events for ${formatDate(date)}:`, error);
+      }
+    }
+  } finally {
+    // Close browser when done with all dates
+    await browser.close();
+  }
+
+  return allEvents;
+}
+
+/**
  * Scrape events for a date range and post them to Notion
  * @param startDate Start date of range
  * @param endDate End date of range (optional, defaults to startDate)
@@ -67,19 +108,8 @@ async function scrapeAndPostDateRange(
     )} to ${formatDate(finalEndDate)}`
   );
 
-  let allEvents: Event[] = [];
-
-  // Scrape events for each date
-  for (const date of dates) {
-    console.log(`\nProcessing date: ${formatDate(date)}`);
-    try {
-      const events = await scrape(date);
-      console.log(`Found ${events.length} events for ${formatDate(date)}`);
-      allEvents = [...allEvents, ...events];
-    } catch (error) {
-      console.error(`Error scraping events for ${formatDate(date)}:`, error);
-    }
-  }
+  // Use the shared browser to process all dates
+  const allEvents = await scrapeWithSharedBrowser(dates);
 
   if (allEvents.length === 0) {
     console.log("No events found in the date range");
