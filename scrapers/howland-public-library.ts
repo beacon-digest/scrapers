@@ -130,12 +130,66 @@ export async function scrape(targetDate: Date): Promise<Event[]> {
         // Wait for the description to load
         await page.waitForSelector(".event-description", { timeout: 60000 });
 
-        // Get the time text separately
+        // Get the full event date and time text from the header
+        let headerText = "";
+        try {
+          headerText = await page.$eval(
+            "h3.event-meta",
+            (el) => el.textContent || ""
+          );
+          console.log("Event header text:", headerText);
+        } catch (error) {
+          console.warn("Could not find h3.event-meta");
+        }
+
+        // Extract date information from header or parent of time span
+        let eventDate = "";
+
+        // Try to extract from header first (format: "Wednesday, April 16...")
+        const headerDateMatch = headerText.match(
+          /([A-Za-z]+),\s+([A-Za-z]+)\s+(\d{1,2})/
+        );
+
+        if (headerDateMatch) {
+          const [, dayOfWeek, month, day] = headerDateMatch;
+          // Extract year from the original start date
+          const year = event.start_at.split("-")[0];
+          eventDate = `${year}-${getMonthNumber(month)}-${day.padStart(
+            2,
+            "0"
+          )}`;
+          console.log(`Extracted date from header: ${eventDate}`);
+        } else {
+          // If no header match, use the original date from JSON-LD
+          eventDate = event.start_at.split("T")[0];
+          console.log(`Using original date: ${eventDate}`);
+        }
+
+        // Get the time text
         const timeText = await page.$eval(
           "span.event-time",
           (el) => el.textContent || ""
         );
         console.log("Found time text:", timeText);
+
+        // Helper function to get month number from name
+        function getMonthNumber(monthName: string): string {
+          const months: Record<string, string> = {
+            january: "01",
+            february: "02",
+            march: "03",
+            april: "04",
+            may: "05",
+            june: "06",
+            july: "07",
+            august: "08",
+            september: "09",
+            october: "10",
+            november: "11",
+            december: "12",
+          };
+          return months[monthName.toLowerCase()] || "01";
+        }
 
         // Extract times using regex, handling formats like "12:00—2:30 PM"
         let startTime: string | undefined;
@@ -183,6 +237,42 @@ export async function scrape(targetDate: Date): Promise<Event[]> {
             const isPM = period.toUpperCase() === "PM";
             startTime = convert12to24(startHour, isPM);
             endTime = convert12to24(endHour, isPM);
+          } else {
+            // Try format like "10:00 AM—1:00 PM" (separate AM/PM for each time)
+            const mixedMatch = timeText.match(
+              /(\d{1,2}):(\d{2})\s*(AM|PM)(?:—|-|\s+to\s+)(\d{1,2}):(\d{2})\s*(AM|PM)/i
+            );
+
+            if (mixedMatch) {
+              const [
+                ,
+                startHour,
+                startMin,
+                startPeriod,
+                endHour,
+                endMin,
+                endPeriod,
+              ] = mixedMatch;
+
+              // Convert 12-hour format to 24-hour format
+              const convert12to24 = (
+                hour: string,
+                min: string,
+                period: string
+              ): string => {
+                let h = Number.parseInt(hour, 10);
+                const isPM = period.toUpperCase() === "PM";
+                if (isPM && h !== 12) h += 12;
+                if (!isPM && h === 12) h = 0;
+                return `${h.toString().padStart(2, "0")}:${min}:00`;
+              };
+
+              startTime = convert12to24(startHour, startMin, startPeriod);
+              endTime = convert12to24(endHour, endMin, endPeriod);
+              console.log(
+                `Parsed mixed time format: ${startTime} to ${endTime}`
+              );
+            }
           }
         }
 
@@ -201,19 +291,17 @@ export async function scrape(targetDate: Date): Promise<Event[]> {
         // Then convert to Markdown
         event.description = turndownService.turndown(decodedDescription);
 
-        // Update times only if they exist
-        const [datePart] = event.start_at.split("T");
-
+        // Update times with the correct date from the event page
         if (startTime) {
           // Format the date and time as ISO 8601 with timezone offset
-          const startDate = new Date(`${datePart}T${startTime}`);
+          const startDate = new Date(`${eventDate}T${startTime}`);
           event.start_at = startDate.toISOString();
           console.log(`Parsed start time: ${startTime} -> ${event.start_at}`);
         }
 
         if (endTime) {
           // Format the date and time as ISO 8601 with timezone offset
-          const endDate = new Date(`${datePart}T${endTime}`);
+          const endDate = new Date(`${eventDate}T${endTime}`);
           event.end_at = endDate.toISOString();
           console.log(`Parsed end time: ${endTime} -> ${event.end_at}`);
         }

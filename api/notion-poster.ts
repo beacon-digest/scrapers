@@ -1,5 +1,5 @@
 // Before running, install the required dependencies:
-// pnpm add @notionhq/client dotenv @tryfabric/martian
+// pnpm add @notionhq/client dotenv @tryfabric/martian date-fns-tz
 //
 // Create a .env file in the project root with:
 // NOTION_API_KEY=your_api_key
@@ -12,9 +12,13 @@ import type { BlockObjectRequest } from "@notionhq/client/build/src/api-endpoint
 import type { Event } from "../types.js";
 import dotenv from "dotenv";
 import { markdownToBlocks } from "@tryfabric/martian";
+import { formatInTimeZone } from "date-fns-tz";
 
 // Load environment variables from .env file
 dotenv.config();
+
+// Eastern Time Zone identifier
+const TIME_ZONE = "America/New_York";
 
 // Initialize Notion client
 const notion = new Client({
@@ -221,6 +225,24 @@ export async function postEventsToNotion(events: Event[]): Promise<string[]> {
         `Posting event with start time: ${event.start_at} and end time: ${event.end_at}`
       );
 
+      // Format dates with Eastern Time Zone for Notion
+      const formatWithTimeZone = (isoString: string): string => {
+        const date = new Date(isoString);
+        // Format: 2025-04-16T10:00:00-04:00 (with correct Eastern Time offset)
+        return formatInTimeZone(date, TIME_ZONE, "yyyy-MM-dd'T'HH:mm:ssXXX");
+      };
+
+      const startDateWithTz = formatWithTimeZone(event.start_at);
+      const endDateWithTz = event.end_at
+        ? formatWithTimeZone(event.end_at)
+        : undefined;
+
+      console.log(
+        `Formatted with time zone - Start: ${startDateWithTz}, End: ${
+          endDateWithTz || "N/A"
+        }`
+      );
+
       const response = await notion.pages.create({
         parent: {
           database_id: databaseId,
@@ -238,14 +260,8 @@ export async function postEventsToNotion(events: Event[]): Promise<string[]> {
           },
           Date: {
             date: {
-              start: event.start_at.includes("Z")
-                ? event.start_at
-                : `${event.start_at}Z`,
-              end: event.end_at
-                ? event.end_at.includes("Z")
-                  ? event.end_at
-                  : `${event.end_at}Z`
-                : undefined,
+              start: startDateWithTz,
+              end: endDateWithTz,
             },
           },
           Website: {
