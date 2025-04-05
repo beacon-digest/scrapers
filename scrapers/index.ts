@@ -1,12 +1,17 @@
 import type { Scraper } from "../types.js";
 import { scraper as howlandLibraryScraper } from "./howland-public-library.js";
 import { scraper as stanzaBooksScraper } from "./stanza-books.js";
+import { scraper as towneCrierScraper } from "./towne-crier.js";
 
 /**
  * A list of all available scrapers.
  * Add new scraper objects to this array.
  */
-export const scrapers: Scraper[] = [howlandLibraryScraper, stanzaBooksScraper];
+export const scrapers: Scraper[] = [
+  howlandLibraryScraper,
+  stanzaBooksScraper,
+  towneCrierScraper,
+];
 
 /**
  * Finds a scraper implementation by its unique ID.

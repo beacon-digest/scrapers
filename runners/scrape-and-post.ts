@@ -1,6 +1,7 @@
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { parse as parseDate, isValid as isValidDate } from "date-fns";
+import { toDate } from "date-fns-tz";
 import dotenv from "dotenv";
 import type { ScrapeOptions } from "../types.js";
 import type { Browser } from "puppeteer";
@@ -12,6 +13,9 @@ import { formatDate } from "../utils/date.js"; // Only need formatDate here
 
 // Load environment variables from .env file
 dotenv.config();
+
+// Define the target timezone consistently
+const TIME_ZONE = "America/New_York";
 
 // --- Main Function ---
 async function main() {
@@ -47,11 +51,12 @@ async function main() {
       default: false,
     })
     .check((argv) => {
-      // Validate date formats
+      // Validate date formats using the target timezone
       const dateFormat = "yyyy-MM-dd";
       // Explicitly treat as string for parsing
       const startStr = argv.startDate as string;
-      const startDate = parseDate(startStr, dateFormat, new Date());
+      // Use toDate with timeZone option to parse the date string correctly
+      const startDate = toDate(`${startStr}T00:00:00`, { timeZone: TIME_ZONE });
       if (!isValidDate(startDate)) {
         throw new Error(
           `Invalid start-date format: ${startStr}. Please use YYYY-MM-DD.`
@@ -59,13 +64,21 @@ async function main() {
       }
       if (argv.endDate) {
         const endStr = argv.endDate as string;
-        const endDate = parseDate(endStr, dateFormat, new Date());
+        // Use toDate with timeZone option for the end date as well
+        const endDate = toDate(`${endStr}T23:59:59.999`, {
+          timeZone: TIME_ZONE,
+        });
         if (!isValidDate(endDate)) {
           throw new Error(
             `Invalid end-date format: ${endStr}. Please use YYYY-MM-DD.`
           );
         }
-        if (endDate < startDate) {
+        // Compare the start of the day for validity check
+        const startOfDayInNY = toDate(`${startStr}T00:00:00`, {
+          timeZone: TIME_ZONE,
+        });
+        if (endDate < startOfDayInNY) {
+          // Compare end instant with start instant
           throw new Error(
             `End date (${endStr}) cannot be before start date (${startStr}).`
           );
@@ -100,14 +113,23 @@ async function main() {
   }
 
   const dateFormat = "yyyy-MM-dd";
-  const startDate = parseDate(argv.startDate, dateFormat, new Date());
-  const endDate = argv.endDate
-    ? parseDate(argv.endDate, dateFormat, new Date())
-    : startDate; // Default end date to start date
+  // Parse start and end dates using toDate with timeZone option
+  const startDate = toDate(`${argv.startDate}T00:00:00`, {
+    timeZone: TIME_ZONE,
+  });
+  // If a single day is specified, the range should be that entire day.
+  const effectiveEndDate = argv.endDate
+    ? toDate(`${argv.endDate}T23:59:59.999`, { timeZone: TIME_ZONE })
+    : toDate(`${argv.startDate}T23:59:59.999`, { timeZone: TIME_ZONE }); // End of the start day
 
   console.log(`▶️ Running scraper: ${scraper.name} (${scraper.id})`);
   console.log(
-    `🗓️ Date range: ${formatDate(startDate)} to ${formatDate(endDate)}`
+    // Use formatDate from date utils for consistent display if needed,
+    // but the underlying Date objects now represent NY time correctly.
+    // Using the original strings might be clearer for the log message.
+    `🗓️ Date range (New York Time): ${argv.startDate} to ${
+      argv.endDate || argv.startDate
+    }`
   );
 
   // --- Execution Logic ---
@@ -120,8 +142,8 @@ async function main() {
 
     // 2. Prepare Scrape Options
     const scrapeOptions: ScrapeOptions = {
-      startDate,
-      endDate,
+      startDate, // This is the start of the day in NY
+      endDate: effectiveEndDate, // This is the end of the day range in NY
       browser,
     };
 

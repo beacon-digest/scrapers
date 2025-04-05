@@ -100,8 +100,9 @@ export const scraper: Scraper = {
 
 -   **Error Handling**: Anticipate website changes and network errors. Use `try...catch` blocks appropriately.
 -   **Logging**: Add `console.log` statements within your `scrape` function to aid debugging, especially during development. Indicate which scraper is running.
--   **Date Handling**: Be robust with date parsing and timezones. Use libraries like `date-fns` for reliability. Ensure output dates are ISO 8601.
--   **Efficiency**: Avoid unnecessary requests or computations. If using Puppeteer, close pages (`page.close()`) when done.
+-   **Date Handling**: Be robust with date parsing. Check existing scrapers (e.g., in the `scrapers/` directory) for established patterns for handling dates, times, and timezones. Ensure output dates are ISO 8601. Use utility functions from `utils/date.js` if applicable.
+-   **Efficiency**: Avoid unnecessary requests or computations. If using Puppeteer, close pages (`page.close()`) when done. Check existing scrapers for established patterns for DOM manipulation (e.g., using `page.evaluate` vs. adding external parsing libraries like Cheerio).
+-   **Dependencies**: Avoid adding new external dependencies (npm packages) unless strictly necessary and significantly simplifying the code. Prioritize using built-in browser functionality (via Puppeteer) and existing utility functions.
 -   **Respect `robots.txt`**: Check the target website's `robots.txt` file for scraping guidelines.
 -   **Rate Limiting**: Be mindful of the target server's resources. Avoid overly frequent requests. Implement delays if necessary.
 -   **Use the Shared Browser**: Leverage the `options.browser` instance for performance and resource management.

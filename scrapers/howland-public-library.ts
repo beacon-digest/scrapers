@@ -1,6 +1,7 @@
 import type { Browser } from "puppeteer";
 import { format } from "date-fns";
 import { decode } from "html-entities";
+import { toDate } from "date-fns-tz";
 
 import type { Event, Scraper, ScrapeOptions } from "../types.js";
 import { getDatesInRange, formatDate } from "../utils/date.js";
@@ -13,6 +14,7 @@ import { EventsArraySchema } from "../utils/validation.js";
 const BASE_URL = "https://beaconlibrary.assabetinteractive.com/calendar";
 const SCRAPER_ID = "howland-library";
 const LOCATION_NAME = "Howland Public Library";
+const TIME_ZONE = "America/New_York";
 
 /**
  * Scrapes events for a given date range from the Howland Public Library calendar.
@@ -168,24 +170,24 @@ const scrapeHowlandLibraryEvents = async (
               const { startTime, endTime } = parseTimeText(timeText);
 
               if (startTime) {
-                event.start_at = new Date(
-                  `${eventDate}T${startTime}`
-                ).toISOString();
+                event.start_at = toDate(`${eventDate}T${startTime}`, {
+                  timeZone: TIME_ZONE,
+                }).toISOString();
               } else {
                 // Fallback if time parsing fails - keep placeholder or set to start of day?
                 console.warn(
                   `[${SCRAPER_ID}] Could not parse start time from "${timeText}" for event: ${event.title}`
                 );
                 // Optionally default to start of day:
-                event.start_at = new Date(
-                  `${eventDate}T00:00:00`
-                ).toISOString();
+                event.start_at = toDate(`${eventDate}T00:00:00`, {
+                  timeZone: TIME_ZONE,
+                }).toISOString();
               }
 
               if (endTime) {
-                event.end_at = new Date(
-                  `${eventDate}T${endTime}`
-                ).toISOString();
+                event.end_at = toDate(`${eventDate}T${endTime}`, {
+                  timeZone: TIME_ZONE,
+                }).toISOString();
               } else {
                 event.end_at = undefined; // Ensure end_at is undefined if not parsed
               }

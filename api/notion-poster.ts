@@ -293,15 +293,32 @@ export async function postEventsToNotion(events: Event[]): Promise<string[]> {
       }
 
       // --- Sanitize Description Links ---
-      // TODO: Determine baseUrl dynamically if needed
-      const baseUrlForLinks = "https://www.stanzabooks.com";
+      // Bypassing sanitizeMarkdownLinks as it seems to convert back to HTML
+      /* 
+      const baseUrlForLinks = "https://www.stanzabooks.com"; // TODO: Fix hardcoded URL
       const sanitizedDescription = sanitizeMarkdownLinks(
         event.description,
         baseUrlForLinks
       );
+      */
+      const descriptionForBlocks = event.description; // Use original Markdown
+
+      // --- Remove DEBUG Logs ---
+      /*
+      console.log(`[Notion Poster DEBUG] Markdown input for ${event.title} (length ${sanitizedDescription?.length}):\n${sanitizedDescription?.substring(0, 300)}...`);
+      */
+      // --- END Remove DEBUG ---
 
       // --- Common Data Prep ---
-      const descriptionBlocks = markdownToBlocks(sanitizedDescription);
+      const descriptionBlocks = markdownToBlocks(descriptionForBlocks);
+
+      // --- Remove DEBUG Logs ---
+      /*
+      console.log(`[Notion Poster DEBUG] Resulting blocks for ${event.title}:`, JSON.stringify(descriptionBlocks?.slice(0, 3), null, 2)); // Log first 3 blocks
+      console.log(`[Notion Poster DEBUG] Total blocks generated: ${descriptionBlocks?.length}`);
+      */
+      // --- END Remove DEBUG ---
+
       const startDateWithTz = formatWithTimeZone(event.start_at);
       const endDateWithTz = event.end_at
         ? formatWithTimeZone(event.end_at)
