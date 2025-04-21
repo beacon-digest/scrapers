@@ -2,6 +2,7 @@ import type { Scraper } from "../types.js";
 import { scraper as howlandLibraryScraper } from "./howland-public-library.js";
 import { scraper as stanzaBooksScraper } from "./stanza-books.js";
 import { scraper as towneCrierScraper } from "./towne-crier.js";
+import { scraper as diaBeaconScraper } from "./dia-beacon.js";
 
 /**
  * A list of all available scrapers.
@@ -11,6 +12,7 @@ export const scrapers: Scraper[] = [
   howlandLibraryScraper,
   stanzaBooksScraper,
   towneCrierScraper,
+  diaBeaconScraper,
 ];
 
 /**
