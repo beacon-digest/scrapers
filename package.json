@@ -6,7 +6,7 @@
 	"type": "module",
 	"scripts": {
 		"build": "tsc",
-		"start": "tsx scrapers/howland-public-library.ts",
+		"start": "tsx runners/scrape-and-post.ts",
 		"dev": "tsx watch scrapers/howland-public-library.ts"
 	},
 	"keywords": [],
