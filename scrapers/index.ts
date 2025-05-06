@@ -4,6 +4,7 @@ import { scraper as stanzaBooksScraper } from "./stanza-books.js";
 import { scraper as towneCrierScraper } from "./towne-crier.js";
 import { scraper as diaBeaconScraper } from "./dia-beacon.js";
 import { scraper as theYardBeaconScraper } from "./the-yard-beacon.js";
+import { scraper as repeatingEventsScraper } from "./repeating-events.js";
 
 /**
  * A list of all available scrapers.
@@ -15,6 +16,7 @@ export const scrapers: Scraper[] = [
   towneCrierScraper,
   diaBeaconScraper,
   theYardBeaconScraper,
+  repeatingEventsScraper,
 ];
 
 /**

@@ -1,9 +1,21 @@
 import { z } from "zod";
 
+// Define Zod schema for the Notion Icon object
+const NotionIconSchema = z.union([
+  z.object({
+    type: z.literal("emoji"),
+    emoji: z.string(),
+  }),
+  z.object({
+    type: z.literal("external"),
+    external: z.object({ url: z.string().url() }),
+  }),
+]);
+
 // Define Zod schema for event validation matching the Event type
 export const EventSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  description: z.string().min(1, "Description is required"),
+  description: z.string(),
   start_at: z.string().regex(
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:.\d{3}Z|[-+]\d{2}:\d{2})$/, // Allow ISO strings with Z or offset
     "start_at must be in ISO format YYYY-MM-DDThh:mm:ssZ or with timezone offset"
@@ -15,9 +27,10 @@ export const EventSchema = z.object({
       "end_at must be in ISO format YYYY-MM-DDThh:mm:ssZ or with timezone offset"
     )
     .optional(),
-  url: z.string().url("URL must be a valid URL"),
+  url: z.string().url("URL must be a valid URL").optional(),
   location: z.string().min(1, "Location is required"),
   external_id: z.string().min(1, "External ID is required"),
+  icon: NotionIconSchema.optional(),
 });
 
 // Define Zod schema for validating an array of events

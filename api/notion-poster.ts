@@ -12,7 +12,7 @@ import type {
   BlockObjectRequest,
   CreatePageParameters,
 } from "@notionhq/client/build/src/api-endpoints";
-import type { Event } from "../types.js";
+import type { Event, NotionIcon } from "../types.js";
 import dotenv from "dotenv";
 import { markdownToBlocks } from "@tryfabric/martian";
 import { formatInTimeZone } from "date-fns-tz";
@@ -271,6 +271,9 @@ export async function postEventsToNotion(events: Event[]): Promise<string[]> {
         continue;
       }
 
+      // --- Log event.icon directly ---
+      // console.log(`[Notion Poster DEBUG] Processing event ${event.external_id}, event.icon:`, JSON.stringify(event.icon, null, 2)); // REMOVE LOG
+
       // --- Location Matching ---
       let locationName = event.location;
       if (locationOptions.length > 0) {
@@ -350,11 +353,16 @@ export async function postEventsToNotion(events: Event[]): Promise<string[]> {
         `  Timezone: Start=${startDateWithTz}, End=${endDateWithTz || "N/A"}`
       );
 
-      const response = await notion.pages.create({
+      const createPageArgs: CreatePageParameters = {
         parent: { database_id: databaseId },
         properties: properties,
         children: descriptionBlocks as BlockObjectRequest[],
-      });
+        ...(event.icon && { icon: event.icon as CreatePageParameters["icon"] }),
+      };
+
+      // console.log(`[Notion Poster DEBUG] Payload for "${event.title}":`, JSON.stringify(createPageArgs, null, 2)); // REMOVE LOG
+
+      const response = await notion.pages.create(createPageArgs);
 
       existingIds.add(event.external_id);
       console.log(`Successfully added event "${event.title}" to Notion`);
