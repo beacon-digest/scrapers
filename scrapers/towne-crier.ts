@@ -16,8 +16,6 @@ import { convertHtmlToMarkdown } from "../utils/markdown.js";
 
 // Define the timezone for Beacon, NY - Used for context, not direct date-fns-tz usage
 const TIMEZONE = "America/New_York";
-const SCRAPER_ID = "towne-crier";
-const LOCATION_NAME = "Towne Crier";
 
 // Interface for raw data extracted within page.evaluate
 interface RawEventData {
@@ -111,9 +109,9 @@ function convertToISO(
   }
 }
 
-async function scrapeTowneCrier(options: ScrapeOptions): Promise<Event[]> {
+async function scrapeTowneCrierStage(options: ScrapeOptions, stagePath: string, scraperId: string, locationName: string): Promise<Event[]> {
   const { startDate, endDate, browser } = options;
-  const url = "https://townecrier.com/main-stage/";
+  const url = "https://townecrier.com" + stagePath;
   const events: Event[] = [];
   const endDateOrStartDate = endDate ?? startDate;
   // Define the interval once before the loop
@@ -123,7 +121,7 @@ async function scrapeTowneCrier(options: ScrapeOptions): Promise<Event[]> {
   };
 
   console.log(
-    `[${SCRAPER_ID}] Scraping Towne Crier from ${formatDate(
+    `[${scraperId}] Scraping Towne Crier from ${formatDate(
       startDate
     )} to ${formatDate(endDateOrStartDate)}`
   );
@@ -194,8 +192,8 @@ async function scrapeTowneCrier(options: ScrapeOptions): Promise<Event[]> {
 
         return rawEvents;
       },
-      SCRAPER_ID,
-      LOCATION_NAME
+      scraperId,
+      locationName
     );
 
     console.log(
@@ -347,7 +345,13 @@ async function scrapeTowneCrier(options: ScrapeOptions): Promise<Event[]> {
 }
 
 export const scraper: Scraper = {
-  id: SCRAPER_ID,
+  id: "towne-crier-main",
   name: "Towne Crier (Main Stage)",
-  scrape: scrapeTowneCrier,
+  scrape: (options) => scrapeTowneCrierStage(options, "/main-stage/", "towne-crier-main", "Towne Crier"),
+};
+
+export const salonScraper: Scraper = {
+  id: "towne-crier-salon",
+  name: "Towne Crier (Salon Stage)",
+  scrape: (options) => scrapeTowneCrierStage(options, "/salon-stage/", "towne-crier-salon", "Towne Crier"),
 };
