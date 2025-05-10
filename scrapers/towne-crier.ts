@@ -102,7 +102,7 @@ function convertToISO(
     return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}Z`;
   } catch (e) {
     console.error(
-      `[${SCRAPER_ID}] Error converting date string to UTC: "${combinedString}"`,
+      `[convertToISO] Error converting date string to UTC: "${combinedString}"`,
       e
     );
     return undefined;
@@ -134,7 +134,7 @@ async function scrapeTowneCrierStage(options: ScrapeOptions, stagePath: string, 
     }
     page = await browser.newPage();
     await page.goto(url, { waitUntil: "networkidle0", timeout: 60000 });
-    console.log(`[${SCRAPER_ID}] Main page loaded. Extracting event list...`);
+    console.log(`[${scraperId}] Main page loaded. Extracting event list...`);
 
     const eventElementsData = await page.evaluate(
       (scraperId, locationName): RawEventData[] => {
@@ -197,7 +197,7 @@ async function scrapeTowneCrierStage(options: ScrapeOptions, stagePath: string, 
     );
 
     console.log(
-      `[${SCRAPER_ID}] Found ${eventElementsData.length} raw event elements. Processing and filtering...`
+      `[${scraperId}] Found ${eventElementsData.length} raw event elements. Processing and filtering...`
     );
 
     // Process raw event data outside the browser context
@@ -208,7 +208,7 @@ async function scrapeTowneCrierStage(options: ScrapeOptions, stagePath: string, 
 
       if (!start_at) {
         console.warn(
-          `[${SCRAPER_ID}] Skipping event (invalid date format): ${rawEvent.title}`
+          `[${scraperId}] Skipping event (invalid date format): ${rawEvent.title}`
         );
         continue;
       }
@@ -219,13 +219,13 @@ async function scrapeTowneCrierStage(options: ScrapeOptions, stagePath: string, 
         eventStartDate = parseISO(start_at);
         if (!isValid(eventStartDate)) {
           console.warn(
-            `[${SCRAPER_ID}] Skipping event (invalid parsed date): ${rawEvent.title} - ${start_at}`
+            `[${scraperId}] Skipping event (invalid parsed date): ${rawEvent.title} - ${start_at}`
           );
           continue;
         }
       } catch (dateError) {
         console.error(
-          `[${SCRAPER_ID}] Error parsing date for ${rawEvent.title}:`,
+          `[${scraperId}] Error parsing date for ${rawEvent.title}:`,
           dateError
         );
         continue;
@@ -239,14 +239,14 @@ async function scrapeTowneCrierStage(options: ScrapeOptions, stagePath: string, 
 
       // 3. Date is valid and within range, NOW fetch full description
       console.log(
-        `[${SCRAPER_ID}] Event within range, fetching details: ${rawEvent.title}`
+        `[${scraperId}] Event within range, fetching details: ${rawEvent.title}`
       );
       let fullDescription = rawEvent.description; // Default to truncated description
 
       if (rawEvent.url) {
         try {
           console.log(
-            `[${SCRAPER_ID}] Navigating to detail page: ${rawEvent.url}`
+            `[${scraperId}] Navigating to detail page: ${rawEvent.url}`
           );
           await page.goto(rawEvent.url, {
             waitUntil: "networkidle0",
@@ -270,25 +270,20 @@ async function scrapeTowneCrierStage(options: ScrapeOptions, stagePath: string, 
             fullDescription = convertHtmlToMarkdown(descriptionContainerHtml);
             // --- DEBUG: Log the converted Markdown ---
             console.log(
-              `[${SCRAPER_ID} DEBUG] Converted Markdown (length ${
-                fullDescription?.length
-              }):\n${fullDescription?.substring(
-                0,
-                500
-              )}...\n--- END MARKDOWN ---`
+              `[${scraperId} DEBUG] Converted Markdown (length ${fullDescription?.length}):\n${fullDescription?.substring(0, 500)}...\n--- END MARKDOWN ---`
             );
             // --- END DEBUG ---
             console.log(
-              `[${SCRAPER_ID}] Extracted and converted HTML from (${descriptionContainerSelector}) container.`
+              `[${scraperId}] Extracted and converted HTML from (${descriptionContainerSelector}) container.`
             );
           } else {
             console.warn(
-              `[${SCRAPER_ID}] Description element (${descriptionContainerSelector}) found but innerHTML was empty for ${rawEvent.title}.`
+              `[${scraperId}] Description element (${descriptionContainerSelector}) found but innerHTML was empty for ${rawEvent.title}.`
             );
           }
         } catch (detailError) {
           console.error(
-            `[${SCRAPER_ID}] Error fetching/parsing details for ${rawEvent.title} at ${rawEvent.url}:`,
+            `[${scraperId}] Error fetching/parsing details for ${rawEvent.title} at ${rawEvent.url}:`,
             detailError
           );
           // Keep the truncated description if detail fetching fails
@@ -317,19 +312,19 @@ async function scrapeTowneCrierStage(options: ScrapeOptions, stagePath: string, 
     if (!validationResult.success) {
       // Log detailed validation errors if parsing fails
       console.error(
-        `[${SCRAPER_ID}] Zod validation error:`,
+        `[${scraperId}] Zod validation error:`,
         validationResult.error.errors
       );
       // Throw an error to indicate that the scraper produced invalid data
       throw new Error(
-        `[${SCRAPER_ID}] Event validation failed: ${JSON.stringify(
+        `[${scraperId}] Event validation failed: ${JSON.stringify(
           validationResult.error
         )}`
       );
     }
 
     console.log(
-      `[${SCRAPER_ID}] Finished processing. Found ${validationResult.data.length} valid events within the date range.`
+      `[${scraperId}] Finished processing. Found ${validationResult.data.length} valid events within the date range.`
     );
     return validationResult.data;
   } catch (error) {
@@ -339,7 +334,7 @@ async function scrapeTowneCrierStage(options: ScrapeOptions, stagePath: string, 
     // Ensure the Puppeteer page is closed even if errors occurred
     if (page && !page.isClosed()) {
       await page.close();
-      console.log(`[${SCRAPER_ID}] Browser page closed.`);
+      console.log(`[${scraperId}] Browser page closed.`);
     }
   }
 }
