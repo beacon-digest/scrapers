@@ -1,5 +1,13 @@
 [
 	{
+		"ruleId": "baja-328-trivia",
+		"title": "Trivia Night",
+		"location": "Baja 328",
+		"time": "19:00",
+		"rrule": "FREQ=WEEKLY;BYDAY=TU",
+		"iconEmoji": "🗂️"
+	},
+	{
 		"ruleId": "beacon-backyard-free-breakfast",
 		"title": "Free Breakfast for Anyone in Need",
 		"description": "Free breakfast provided by Beacon's Backyard.",
@@ -143,6 +151,14 @@
 		"duration": { "hours": 4 },
 		"rrule": "FREQ=MONTHLY;BYDAY=FR;BYSETPOS=4",
 		"iconEmoji": "🎤"
+	},
+	{
+		"ruleId": "quinns-club-draw",
+		"title": "Club Draw",
+		"location": "Quinn's",
+		"time": "20:00",
+		"rrule": "FREQ=MONTHLY;BYDAY=TU;BYSETPOS=1",
+		"iconEmoji": "🧑‍🎨"
 	},
 	{
 		"ruleId": "roosevelt-drag-show",
