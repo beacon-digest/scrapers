@@ -1,7 +1,6 @@
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import {
-  parse as parseDate,
   isValid as isValidDate,
   format,
   addDays,
@@ -9,13 +8,12 @@ import {
 import { toDate, formatInTimeZone } from "date-fns-tz";
 import dotenv from "dotenv";
 import inquirer from "inquirer";
-import type { ScrapeOptions } from "../types.js";
+import type { ScrapeOptions, Scraper } from "../types.js";
 import type { Browser } from "puppeteer";
 
 import { findScraperById, scrapers } from "../scrapers/index.js";
 import { postEventsToNotion } from "../api/notion-poster.js";
 import { getBrowserInstance, closeBrowserInstance } from "../utils/browser.js";
-import { formatDate } from "../utils/date.js"; // Only need formatDate here
 
 // Load environment variables from .env file
 dotenv.config();
@@ -56,9 +54,14 @@ async function main() {
       type: "boolean",
       default: false,
     })
+    .option("all", {
+      alias: "a",
+      description: "Run all scrapers in sequence",
+      type: "boolean",
+      default: false,
+    })
     .check((argv) => {
       // Validate date formats using the target timezone
-      const dateFormat = "yyyy-MM-dd";
 
       // --- Date Validation (only if dates are provided) ---
       let parsedStartDateForCheck: Date | null = null;
@@ -122,35 +125,38 @@ async function main() {
   console.log("✅ Environment variables loaded.");
 
   // --- Scraper Selection and Date Parsing ---
-  let scraperId = argv.scraper as string | undefined;
-
-  // If scraper ID was not provided via args, prompt the user
-  if (!scraperId) {
-    const scraperChoices = scrapers.map((s) => ({
-      name: `${s.name} (${s.id})`,
-      value: s.id,
-    }));
-    const answers = await inquirer.prompt([
-      {
-        type: "list",
-        name: "selectedScraper",
-        message: "Which scraper would you like to run?",
-        choices: scraperChoices,
-      },
-    ]);
-    scraperId = answers.selectedScraper;
+  let selectedScrapers: Scraper[];
+  if (argv.all) {
+    console.log("🚀 Running all scrapers...");
+    selectedScrapers = scrapers;
+  } else {
+    let scraperId = argv.scraper as string | undefined;
+    // If scraper ID was not provided via args, prompt the user
     if (!scraperId) {
-      console.error("❌ Error: No scraper selected.");
+      const scraperChoices = scrapers.map((s) => ({
+        name: `${s.name} (${s.id})`,
+        value: s.id,
+      }));
+      const answers = await inquirer.prompt([
+        {
+          type: "list",
+          name: "selectedScraper",
+          message: "Which scraper would you like to run?",
+          choices: scraperChoices,
+        },
+      ]);
+      scraperId = answers.selectedScraper;
+      if (!scraperId) {
+        console.error("❌ Error: No scraper selected.");
+        process.exit(1);
+      }
+    }
+    const scraper = findScraperById(scraperId);
+    if (!scraper) {
+      console.error(`❌ Error: Scraper with ID "${scraperId}" not found.`);
       process.exit(1);
     }
-  }
-
-  const scraper = findScraperById(scraperId);
-
-  if (!scraper) {
-    // This check is now more important as the ID might come from prompt
-    console.error(`❌ Error: Scraper with ID "${scraperId}" not found.`);
-    process.exit(1);
+    selectedScrapers = [scraper];
   }
 
   // --- Determine Date Range --- START
@@ -206,7 +212,6 @@ async function main() {
 
   // --- Determine Date Range --- END
 
-  console.log(`▶️ Running scraper: ${scraper.name} (${scraper.id})`);
   console.log(
     `🗓️ Date range (New York Time): ${startDateString} to ${endDateString}`
   );
@@ -227,21 +232,25 @@ async function main() {
     };
 
     // 3. Run the Scraper
-    console.log("🚀 Scraping events...");
-    const events = await scraper.scrape(scrapeOptions);
+    let allEvents = [];
+    for (const s of selectedScrapers) {
+      console.log(`▶️ Running scraper: ${s.name} (${s.id})`);
+      const events = await s.scrape(scrapeOptions);
+      console.log(`✅ ${s.name} returned ${events.length} events.`);
+      allEvents = allEvents.concat(events);
+    }
 
-    if (events.length === 0) {
+    if (allEvents.length === 0) {
       console.log("⏹️ No events found for the specified date range.");
     } else {
-      console.log(`✅ Found ${events.length} events.`);
+      console.log(`✅ Found ${allEvents.length} events.`);
 
-      // 4. Post to Notion or Log for Dry Run
       if (argv.dryRun) {
         console.log("\n🌵 Dry Run Mode: Events found but not posted:");
-        console.log(JSON.stringify(events, null, 2)); // Pretty print the events
+        console.log(JSON.stringify(allEvents, null, 2));
       } else {
         console.log("📤 Posting events to Notion...");
-        await postEventsToNotion(events); // Assuming postEventsToNotion handles its own logging
+        await postEventsToNotion(allEvents);
       }
     }
 

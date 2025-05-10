@@ -1,3 +1,4 @@
 node_modules
 cursor-notes
 .env
+.aider*
