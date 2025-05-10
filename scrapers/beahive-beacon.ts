@@ -1,4 +1,4 @@
-import fetch from "node-fetch";
+import type { Browser, Page } from "puppeteer";
 import * as cheerio from "cheerio";
 import type { Event, ScrapeOptions, Scraper } from "../types.js";
 
@@ -6,9 +6,14 @@ export const scraper: Scraper = {
   id: "beahive-beacon",
   name: "Beahive Beacon",
   async scrape(options: ScrapeOptions): Promise<Event[]> {
+    const { browser } = options;
+    if (!browser) {
+      throw new Error("A Puppeteer browser instance must be provided.");
+    }
     const listingUrl = "https://beahivebeacon.spaces.nexudus.com/events?&v=latest&page=1";
-    const listingRes = await fetch(listingUrl);
-    const listingHtml = await listingRes.text();
+    const page = await browser.newPage();
+    await page.goto(listingUrl, { waitUntil: "networkidle0", timeout: 60000 });
+    const listingHtml = await page.content();
     const $ = cheerio.load(listingHtml);
     const events: Event[] = [];
 
@@ -41,8 +46,8 @@ export const scraper: Scraper = {
     // For each event, open its detail page and scrape additional information.
     for (let event of events) {
       try {
-        const eventRes = await fetch(event.url);
-        const eventHtml = await eventRes.text();
+        await page.goto(event.url, { waitUntil: "networkidle0", timeout: 60000 });
+        const eventHtml = await page.content();
         const $detail = cheerio.load(eventHtml);
 
         // Heuristics to scrape details:
@@ -69,6 +74,7 @@ export const scraper: Scraper = {
         console.error(`Error scraping event detail from ${event.url}: ${err}`);
       }
     }
+    await page.close();
     return events;
   },
 };
