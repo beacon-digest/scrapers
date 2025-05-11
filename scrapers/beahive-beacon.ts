@@ -14,7 +14,7 @@ export const scraper: Scraper = {
     await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
     await page.goto(listingUrl, { waitUntil: "networkidle0", timeout: 60000 });
     const listingHtml = await page.content();
-    console.log({ listingHtml });
+
     const events: Event[] = await page.evaluate(() => {
       const lis = Array.from(document.querySelectorAll("li"));
       console.log({ lis });
