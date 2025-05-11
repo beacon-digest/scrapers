@@ -1,4 +1,3 @@
-import type { Browser, Page } from "puppeteer";
 import type { Event, ScrapeOptions, Scraper } from "../types.js";
 import { parse } from "date-fns";
 import { convertHtmlToMarkdown } from "../utils/markdown.js";
@@ -15,11 +14,9 @@ export const scraper: Scraper = {
     const page = await browser.newPage();
     await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
     await page.goto(listingUrl, { waitUntil: "networkidle0", timeout: 60000 });
-    const listingHtml = await page.content();
 
     const events: Event[] = await page.evaluate(() => {
       const lis = Array.from(document.querySelectorAll("li"));
-      console.log({ lis });
       return lis.map(el => {
         const titleElement = el.querySelector("a[href^='/events/']");
         console.log({ titleElement });
@@ -33,7 +30,7 @@ export const scraper: Scraper = {
         const liText = el.innerText;
         if (!liText.includes("Beahive Beacon")) return null;
         return {
-          title: titleElement.innerText.trim(),
+          title: "",
           description: "",
           location: "Beahive Beacon",
           start_at: "",
@@ -46,7 +43,7 @@ export const scraper: Scraper = {
     // For each event, open its detail page and scrape additional information.
     for (let event of events) {
       try {
-        await page.goto(event.url, { waitUntil: "networkidle0", timeout: 60000 });
+        await page.goto(event.url!, { waitUntil: "networkidle0", timeout: 60000 });
         const details = await page.evaluate(() => {
           const result: { title: string; description: string; dateString?: string; endDateString?: string; } = {
             title: "",
@@ -54,7 +51,7 @@ export const scraper: Scraper = {
           };
           const h1 = document.querySelector(".card-event__title");
           if (h1) {
-            result.title = h1.innerText.trim();
+            result.title = (h1 as HTMLHeadingElement).innerText.trim();
           }
           const descElem = document.querySelector(".event-page-details");
           if (descElem) {
