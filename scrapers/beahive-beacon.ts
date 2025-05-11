@@ -20,19 +20,19 @@ export const scraper: Scraper = {
       const lis = Array.from(document.querySelectorAll("li"));
       console.log({ lis });
       return lis.map(el => {
-        const anchor = el.querySelector("a[href^='/events/']");
-        console.log({ anchor });
-        if (!anchor) return null;
-        const eventHref = anchor.getAttribute("href");
+        const titleElement = el.querySelector(".card-event__title a[href^='/events/']");
+        console.log({ titleElement });
+        if (!titleElement) return null;
+        const eventHref = titleElement.getAttribute("href");
         if (!eventHref) return null;
         const fullUrl = "https://beahivebeacon.spaces.nexudus.com" + eventHref;
-        const idMatch = eventHref.match(/^\/events\/(\d+)/);
+        const idMatch = eventHref.match(/^\/events\/(\d+)\/([\w-]+)/);
         if (!idMatch) return null;
-        const external_id = idMatch[1];
+        const external_id = `beahive-${idMatch[2]}-${idMatch[1]}`;
         const liText = el.innerText;
         if (!liText.includes("Beahive Beacon")) return null;
         return {
-          title: anchor.innerText.trim(),
+          title: titleElement.innerText.trim(),
           description: "",
           location: "Beahive Beacon",
           start_at: "",
