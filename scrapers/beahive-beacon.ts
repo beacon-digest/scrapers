@@ -1,6 +1,7 @@
 import type { Browser, Page } from "puppeteer";
 import type { Event, ScrapeOptions, Scraper } from "../types.js";
 import { parse } from "date-fns";
+import { convertHtmlToMarkdown } from "../utils/markdown.js";
 
 export const scraper: Scraper = {
   id: "beahive-beacon",
@@ -73,7 +74,7 @@ export const scraper: Scraper = {
           event.title = details.title;
         }
         if (details.description) {
-          event.description = details.description;
+          event.description = convertHtmlToMarkdown(details.description);
         }
         if (details.dateString) {
           const parsedStartDate = parse(details.dateString, "MMM d, yyyy h:mm a", new Date());
