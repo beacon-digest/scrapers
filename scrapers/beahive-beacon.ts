@@ -47,10 +47,9 @@ export const scraper: Scraper = {
       try {
         await page.goto(event.url, { waitUntil: "networkidle0", timeout: 60000 });
         const details = await page.evaluate(() => {
-          const result: { title: string; description: string; dateString: string; } = {
+          const result: { title: string; description: string; dateString?: string; endDateString?: string; } = {
             title: "",
-            description: "",
-            dateString: ""
+            description: ""
           };
           const h1 = document.querySelector("h1");
           if (h1) {
@@ -60,10 +59,13 @@ export const scraper: Scraper = {
           if (descElem) {
             result.description = descElem.innerHTML;
           }
-          const bodyText = document.body.innerText;
-          const dateMatch = bodyText.match(/Date:\s*([A-Za-z]+\s+\d{1,2},\s+\d{4}\s+\d{1,2}:\d{2}\s*(?:AM|PM))/);
-          if (dateMatch) {
-            result.dateString = dateMatch[1];
+          const timeContainer = document.querySelector(".card-event__time");
+          if (timeContainer) {
+            const timeElements = timeContainer.querySelectorAll("time");
+            if (timeElements.length >= 2) {
+              result.dateString = timeElements[0].innerText.replace(/Start Time\s*/, "").trim();
+              result.endDateString = timeElements[1].innerText.replace(/End Time\s*/, "").trim();
+            }
           }
           return result;
         });
@@ -74,9 +76,15 @@ export const scraper: Scraper = {
           event.description = details.description;
         }
         if (details.dateString) {
-          const parsedDate = parse(details.dateString, "MMM d, yyyy h:mm a", new Date());
-          if (!isNaN(parsedDate.getTime())) {
-            event.start_at = parsedDate.toISOString();
+          const parsedStartDate = parse(details.dateString, "MMM d, yyyy h:mm a", new Date());
+          if (!isNaN(parsedStartDate.getTime())) {
+            event.start_at = parsedStartDate.toISOString();
+          }
+        }
+        if (details.endDateString) {
+          const parsedEndDate = parse(details.endDateString, "MMM d, yyyy h:mm a", new Date());
+          if (!isNaN(parsedEndDate.getTime())) {
+            event.end_at = parsedEndDate.toISOString();
           }
         }
       } catch (err) {
