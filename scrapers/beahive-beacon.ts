@@ -20,7 +20,7 @@ export const scraper: Scraper = {
       const lis = Array.from(document.querySelectorAll("li"));
       console.log({ lis });
       return lis.map(el => {
-        const titleElement = el.querySelector(".card-event__title a[href^='/events/']");
+        const titleElement = el.querySelector("a[href^='/events/']");
         console.log({ titleElement });
         if (!titleElement) return null;
         const eventHref = titleElement.getAttribute("href");
@@ -51,7 +51,7 @@ export const scraper: Scraper = {
             title: "",
             description: ""
           };
-          const h1 = document.querySelector("h1");
+          const h1 = document.querySelector(".card-event__title");
           if (h1) {
             result.title = h1.innerText.trim();
           }
