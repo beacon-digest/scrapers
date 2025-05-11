@@ -1,5 +1,6 @@
 import type { Browser, Page } from "puppeteer";
 import type { Event, ScrapeOptions, Scraper } from "../types.js";
+import { parse } from "date-fns";
 
 export const scraper: Scraper = {
   id: "beahive-beacon",
@@ -73,7 +74,7 @@ export const scraper: Scraper = {
           event.description = details.description;
         }
         if (details.dateString) {
-          const parsedDate = new Date(details.dateString);
+          const parsedDate = parse(details.dateString, "MMM d, yyyy h:mm a", new Date());
           if (!isNaN(parsedDate.getTime())) {
             event.start_at = parsedDate.toISOString();
           }
