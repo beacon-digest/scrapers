@@ -56,7 +56,7 @@ export const scraper: Scraper = {
           if (h1) {
             result.title = h1.innerText.trim();
           }
-          const descElem = document.querySelector(".event-description");
+          const descElem = document.querySelector(".event-page-details");
           if (descElem) {
             result.description = descElem.innerHTML;
           }
