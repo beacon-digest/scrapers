@@ -9,14 +9,17 @@ export const scraper: Scraper = {
     if (!browser) {
       throw new Error("A Puppeteer browser instance must be provided.");
     }
-    const listingUrl = "https://beahivebeacon.spaces.nexudus.com/events?&v=latest&page=1";
+    const listingUrl = "https://beahivebeacon.spaces.nexudus.com/events";
     const page = await browser.newPage();
     await page.goto(listingUrl, { waitUntil: "networkidle0", timeout: 60000 });
     const listingHtml = await page.content();
+    console.log({ listingHtml });
     const events: Event[] = await page.evaluate(() => {
       const lis = Array.from(document.querySelectorAll("li"));
+      console.log({ lis });
       return lis.map(el => {
         const anchor = el.querySelector("a[href^='/events/']");
+        console.log({ anchor });
         if (!anchor) return null;
         const eventHref = anchor.getAttribute("href");
         if (!eventHref) return null;
