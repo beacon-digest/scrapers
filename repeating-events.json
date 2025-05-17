@@ -1,197 +1,254 @@
 [
-	{
-		"ruleId": "baja-328-trivia",
-		"title": "Trivia Night",
-		"location": "Baja 328",
-		"time": "19:00",
-		"rrule": "FREQ=WEEKLY;BYDAY=TU",
-		"iconEmoji": "🗂️"
-	},
-	{
-		"ruleId": "beacon-backyard-free-breakfast",
-		"title": "Free Breakfast for Anyone in Need",
-		"description": "Free breakfast provided by Beacon's Backyard.",
-		"location": "12 Hanna Lane",
-		"url": "https://linktr.ee/beaconsbackyard",
-		"time": "06:30",
-		"duration": { "hours": 4 },
-		"rrule": "FREQ=WEEKLY;BYDAY=TU,WE,TH",
-		"iconEmoji": "🍳"
-	},
-	{
-		"ruleId": "beacon-chess-club",
-		"title": "Beacon Chess Club",
-		"description": "All ages and skill levels welcome.",
-		"location": "Meyer's Olde Dutch",
-		"url": "https://www.instagram.com/beaconchessclub/",
-		"time": "18:30",
-		"duration": { "minutes": 150 },
-		"rrule": "FREQ=WEEKLY;BYDAY=SU",
-		"iconEmoji": "♟️"
-	},
-	{
-		"ruleId": "beacon-endurance-beer-run-walk",
-		"title": "Beacon Endurance Beer Run/Walk",
-		"description": "Weekly group run/walk followed by drinks at Happy Valley.",
-		"location": "Happy Valley",
-		"url": "https://beaconendurance.com/",
-		"time": "18:05",
-		"rrule": "FREQ=WEEKLY;BYDAY=TU",
-		"iconEmoji": "🏃"
-	},
-	{
-		"ruleId": "beacon-farmers-market",
-		"title": "Beacon Farmers' Market",
-		"location": "DMV Parking Lot",
-		"url": "https://beaconfarmersmarket.org/",
-		"time": "10:00",
-		"duration": { "hours": 4 },
-		"rrule": "FREQ=WEEKLY;BYDAY=SU",
-		"iconEmoji": "🧑‍🌾"
-	},
-	{
-		"ruleId": "beacon-flea-market",
-		"title": "Beacon Flea Market",
-		"location": "South Chestnut & Henry St",
-		"url": "https://www.beaconfleamarket.com/",
-		"time": "08:00",
-		"rrule": "FREQ=WEEKLY;BYDAY=SU",
-		"duration": { "hours": 7 },
-		"iconEmoji": "👒"
-	},
-	{
-		"ruleId": "beacon-glades-disc-golf-doubles",
-		"title": "Beacon Glades Disc Golf Sunday Doubles",
-		"location": "Beacon Glades",
-		"url": "https://udisc.com/courses/beacon-glades-howy",
-		"time": "11:00",
-		"rrule": "FREQ=WEEKLY;BYDAY=SU",
-		"iconEmoji": "🥏"
-	},
-	{
-		"ruleId": "happy-valley-board-games-beer",
-		"title": "Board Games & Beer",
-		"location": "Happy Valley",
-		"time": "19:00",
-		"duration": { "hours": 3 },
-		"rrule": "FREQ=MONTHLY;BYDAY=MO;BYSETPOS=-1",
-		"iconEmoji": "🎲"
-	},
-	{
-		"ruleId": "happy-valley-dance-independent",
-		"title": "Dance Independent",
-		"description": "Monthly indie dance party 💃🏽 $10 | Queer-friendly | High energy | Good vibes only",
-		"location": "Happy Valley",
-		"time": "21:00",
-		"rrule": "FREQ=MONTHLY;BYDAY=SA;BYSETPOS=2",
-		"iconEmoji": "🕺"
-	},
-	{
-		"ruleId": "happy-valley-karaoke",
-		"title": "Karaoke",
-		"description": " Wild vocals, big vibes. Voted #1 karaoke in the Hudson Valley @karaokeboys.845",
-		"location": "Happy Valley",
-		"time": "20:00",
-		"duration": { "hours": 3 },
-		"rrule": "FREQ=MONTHLY;BYDAY=TH;BYSETPOS=2",
-		"iconEmoji": "🎤"
-	},
-	{
-		"ruleId": "happy-valley-trivia",
-		"title": "Geeks Who Drink Trivia",
-		"location": "Happy Valley",
-		"time": "18:30",
-		"rrule": "FREQ=WEEKLY;BYDAY=TU",
-		"iconEmoji": "🗂️"
-	},
-	{
-		"ruleId": "killer-queen-weekly-meetup",
-		"title": "Killer Queen Weekly Meetup",
-		"location": "Happy Valley",
-		"time": "19:00",
-		"duration": { "hours": 3 },
-		"rrule": "FREQ=WEEKLY;BYDAY=WE",
-		"iconEmoji": "🕹️"
-	},
-	{
-		"ruleId": "howland-bridge-club",
-		"title": "Bridge Club",
-		"url": "https://www.howlandculturalcenter.org/the-bridge-club.html",
-		"description": "Players at any level welcome. Walk-ins welcome. $5 each week. Refreshments served. For information (845) 831-4988",
-		"location": "Howland Cultural Center",
-		"time": "10:00",
-		"duration": { "hours": 3 },
-		"rrule": "FREQ=WEEKLY;BYDAY=MO",
-		"iconEmoji": "🃏"
-	},
-	{
-		"ruleId": "howland-fiddle-jam",
-		"title": "Southern Fiddle Tune Jam",
-		"location": "Howland Cultural Center",
-		"time": "19:00",
-		"duration": { "hours": 3 },
-		"rrule": "FREQ=MONTHLY;BYDAY=TU;BYSETPOS=2",
-		"iconEmoji": "🎻"
-	},
-	{
-		"ruleId": "howland-meditation-class",
-		"title": "Meditation Class",
-		"location": "Howland Cultural Center",
-		"time": "19:00",
-		"duration": { "minutes": 90 },
-		"rrule": "FREQ=WEEKLY;BYDAY=TH",
-		"iconEmoji": "🧘"
-	},
-	{
-		"ruleId": "howland-open-mic",
-		"title": "Howland Cultural Center Open Mic",
-		"location": "Howland Cultural Center",
-		"description": "Open Mic,  originals and covers, most instruments accommodated (including grand piano).  All proceeds go to the Howland Cultural Center (501c3 nonprofit).  Snacks available.",
-		"time": "18:15",
-		"duration": { "hours": 4 },
-		"rrule": "FREQ=MONTHLY;BYDAY=FR;BYSETPOS=4",
-		"iconEmoji": "🎤"
-	},
-	{
-		"ruleId": "quinns-club-draw",
-		"title": "Club Draw",
-		"location": "Quinn's",
-		"time": "20:00",
-		"rrule": "FREQ=MONTHLY;BYDAY=TU;BYSETPOS=1",
-		"iconEmoji": "🧑‍🎨"
-	},
-	{
-		"ruleId": "roosevelt-drag-show",
-		"title": "Drag Show",
-		"location": "The Roosevelt",
-		"description": "Bring your single dollars for tipping the dancers!",
-		"time": "21:00",
-		"rrule": "FREQ=WEEKLY;BYDAY=FR",
-		"iconEmoji": "💃"
-	},
-	{
-		"ruleId": "two-way-brewing-comedy-night",
-		"title": "Comedy Night",
-		"location": "Two Way Brewing",
-		"time": "19:00",
-		"rrule": "FREQ=WEEKLY;BYDAY=WE",
-		"iconEmoji": "😆"
-	},
-	{
-		"ruleId": "two-way-brewing-trivia",
-		"title": "Trivia Night",
-		"location": "Two Way Brewing",
-		"time": "19:30",
-		"rrule": "FREQ=WEEKLY;BYDAY=TH",
-		"iconEmoji": "🗂️"
-	},
-	{
-		"ruleId": "two-way-brewing-bingo",
-		"title": "Bingo Night",
-		"location": "Two Way Brewing",
-		"time": "18:00",
-		"duration": { "hours": 2 },
-		"rrule": "FREQ=MONTHLY;BYDAY=SU;BYSETPOS=-1",
-		"iconEmoji": "🎱"
-	}
+  {
+    "ruleId": "baja-328-trivia",
+    "title": "Trivia Night",
+    "location": "Baja 328",
+    "time": "19:00",
+    "rrule": "FREQ=WEEKLY;BYDAY=TU",
+    "iconEmoji": "🗂️"
+  },
+  {
+    "ruleId": "barking-frog-karaoke",
+    "title": "Karaoke Night",
+    "location": "Barking Frog",
+    "time": "20:00",
+    "rrule": "FREQ=WEEKLY;BYDAY=WE",
+    "iconEmoji": "🎤"
+  },
+  {
+    "ruleId": "beacon-backyard-free-breakfast",
+    "title": "Free Breakfast for Anyone in Need",
+    "description": "Free breakfast provided by Beacon's Backyard.",
+    "location": "12 Hanna Lane",
+    "url": "https://linktr.ee/beaconsbackyard",
+    "time": "06:30",
+    "duration": {
+      "hours": 4
+    },
+    "rrule": "FREQ=WEEKLY;BYDAY=TU,WE,TH",
+    "iconEmoji": "🍳"
+  },
+  {
+    "ruleId": "beacon-chess-club",
+    "title": "Beacon Chess Club",
+    "description": "All ages and skill levels welcome.",
+    "location": "Meyer's Olde Dutch",
+    "url": "https://www.instagram.com/beaconchessclub/",
+    "time": "18:30",
+    "duration": {
+      "minutes": 150
+    },
+    "rrule": "FREQ=WEEKLY;BYDAY=SU",
+    "iconEmoji": "♟️"
+  },
+  {
+    "ruleId": "beacon-endurance-beer-run-walk",
+    "title": "Beacon Endurance Beer Run/Walk",
+    "description": "Weekly group run/walk followed by drinks at Happy Valley.",
+    "location": "Happy Valley",
+    "url": "https://beaconendurance.com/",
+    "time": "18:05",
+    "rrule": "FREQ=WEEKLY;BYDAY=TU",
+    "iconEmoji": "🏃"
+  },
+  {
+    "ruleId": "beacon-farmers-market",
+    "title": "Beacon Farmers' Market",
+    "location": "DMV Parking Lot",
+    "url": "https://beaconfarmersmarket.org/",
+    "time": "10:00",
+    "duration": {
+      "hours": 4
+    },
+    "rrule": "FREQ=WEEKLY;BYDAY=SU",
+    "iconEmoji": "🧑‍🌾"
+  },
+  {
+    "ruleId": "beacon-flea-market",
+    "title": "Beacon Flea Market",
+    "location": "South Chestnut & Henry St",
+    "url": "https://www.beaconfleamarket.com/",
+    "time": "08:00",
+    "rrule": "FREQ=WEEKLY;BYDAY=SU",
+    "duration": {
+      "hours": 7
+    },
+    "iconEmoji": "👒"
+  },
+  {
+    "ruleId": "beacon-glades-disc-golf-doubles",
+    "title": "Beacon Glades Disc Golf Sunday Doubles",
+    "location": "Beacon Glades",
+    "url": "https://udisc.com/courses/beacon-glades-howy",
+    "time": "11:00",
+    "rrule": "FREQ=WEEKLY;BYDAY=SU",
+    "iconEmoji": "🥏"
+  },
+  {
+    "ruleId": "happy-valley-board-games-beer",
+    "title": "Board Games & Beer",
+    "location": "Happy Valley",
+    "time": "19:00",
+    "duration": {
+      "hours": 3
+    },
+    "rrule": "FREQ=MONTHLY;BYDAY=MO;BYSETPOS=-1",
+    "iconEmoji": "🎲"
+  },
+  {
+    "ruleId": "happy-valley-dance-independent",
+    "title": "Dance Independent",
+    "description": "Monthly indie dance party 💃🏽 $10 | Queer-friendly | High energy | Good vibes only",
+    "location": "Happy Valley",
+    "time": "21:00",
+    "rrule": "FREQ=MONTHLY;BYDAY=SA;BYSETPOS=2",
+    "iconEmoji": "🕺"
+  },
+  {
+    "ruleId": "happy-valley-karaoke",
+    "title": "Karaoke",
+    "description": " Wild vocals, big vibes. Voted #1 karaoke in the Hudson Valley @karaokeboys.845",
+    "location": "Happy Valley",
+    "time": "20:00",
+    "duration": {
+      "hours": 3
+    },
+    "rrule": "FREQ=MONTHLY;BYDAY=TH;BYSETPOS=2",
+    "iconEmoji": "🎤"
+  },
+  {
+    "ruleId": "happy-valley-trivia",
+    "title": "Geeks Who Drink Trivia",
+    "location": "Happy Valley",
+    "time": "18:30",
+    "rrule": "FREQ=WEEKLY;BYDAY=TU",
+    "iconEmoji": "🗂️"
+  },
+  {
+    "ruleId": "killer-queen-weekly-meetup",
+    "title": "Killer Queen Weekly Meetup",
+    "location": "Happy Valley",
+    "time": "19:00",
+    "duration": {
+      "hours": 3
+    },
+    "rrule": "FREQ=WEEKLY;BYDAY=WE",
+    "iconEmoji": "🕹️"
+  },
+  {
+    "ruleId": "howland-bridge-club",
+    "title": "Bridge Club",
+    "url": "https://www.howlandculturalcenter.org/the-bridge-club.html",
+    "description": "Players at any level welcome. Walk-ins welcome. $5 each week. Refreshments served. For information (845) 831-4988",
+    "location": "Howland Cultural Center",
+    "time": "10:00",
+    "duration": {
+      "hours": 3
+    },
+    "rrule": "FREQ=WEEKLY;BYDAY=MO",
+    "iconEmoji": "🃏"
+  },
+  {
+    "ruleId": "howland-fiddle-jam",
+    "title": "Southern Fiddle Tune Jam",
+    "location": "Howland Cultural Center",
+    "time": "19:00",
+    "duration": {
+      "hours": 3
+    },
+    "rrule": "FREQ=MONTHLY;BYDAY=TU;BYSETPOS=2",
+    "iconEmoji": "🎻"
+  },
+  {
+    "ruleId": "howland-meditation-class",
+    "title": "Meditation Class",
+    "location": "Howland Cultural Center",
+    "time": "19:00",
+    "duration": {
+      "minutes": 90
+    },
+    "rrule": "FREQ=WEEKLY;BYDAY=TH",
+    "iconEmoji": "🧘"
+  },
+  {
+    "ruleId": "howland-open-mic",
+    "title": "Howland Cultural Center Open Mic",
+    "location": "Howland Cultural Center",
+    "description": "Open Mic,  originals and covers, most instruments accommodated (including grand piano).  All proceeds go to the Howland Cultural Center (501c3 nonprofit).  Snacks available.",
+    "time": "18:15",
+    "duration": {
+      "hours": 4
+    },
+    "rrule": "FREQ=MONTHLY;BYDAY=FR;BYSETPOS=4",
+    "iconEmoji": "🎤"
+  },
+  {
+    "ruleId": "quinns-club-draw",
+    "title": "Club Draw",
+    "location": "Quinn's",
+    "time": "20:00",
+    "rrule": "FREQ=MONTHLY;BYDAY=TU;BYSETPOS=1",
+    "iconEmoji": "🧑‍🎨"
+  },
+  {
+    "ruleId": "roosevelt-drag-show",
+    "title": "Drag Show",
+    "location": "The Roosevelt",
+    "description": "Bring your single dollars for tipping the dancers!",
+    "time": "21:00",
+    "rrule": "FREQ=WEEKLY;BYDAY=FR",
+    "iconEmoji": "💃"
+  },
+  {
+    "ruleId": "sibling-storytime",
+    "title": "Storytime",
+    "description": "Join us every Sunday morning at 9am for Storytime at Sibling! We read from 9 to 10am, and kiddos of all ages are welcome. Come read stories with us!",
+    "location": "Sibling",
+    "time": "09:00",
+    "duration": {
+      "hours": 1
+    },
+    "rrule": "FREQ=WEEKLY;BYDAY=SU",
+    "iconEmoji": "📚"
+  },
+  {
+    "ruleId": "two-way-brewing-comedy-night",
+    "title": "Comedy Night",
+    "location": "Two Way Brewing",
+    "time": "19:00",
+    "rrule": "FREQ=WEEKLY;BYDAY=WE",
+    "iconEmoji": "😆"
+  },
+  {
+    "ruleId": "two-way-brewing-trivia",
+    "title": "Trivia Night",
+    "location": "Two Way Brewing",
+    "time": "19:30",
+    "rrule": "FREQ=WEEKLY;BYDAY=TH",
+    "iconEmoji": "🗂️"
+  },
+  {
+    "ruleId": "two-way-brewing-bingo",
+    "title": "Bingo Night",
+    "location": "Two Way Brewing",
+    "time": "18:00",
+    "duration": {
+      "hours": 2
+    },
+    "rrule": "FREQ=MONTHLY;BYDAY=SU;BYSETPOS=-1",
+    "iconEmoji": "🎱"
+  },
+  {
+    "ruleId": "valley-spirit-mindfullness-meditation",
+    "title": "Mindfulness Meditation",
+    "url": "https://www.marywelch.com/events",
+    "description": "If you're local to the Hudson Valley Area, looking for spiritual community and interested in either learning or deepening your meditation practice, join us! Cushions and mats are supplied at the studio; just bring yourself and comfortable clothes. Feel free to invite anyone else interested in cultivating a meditation practice!",
+    "location": "Valley Spirit",
+    "time": "18:30",
+    "duration": {
+      "minutes": 30
+    },
+    "rrule": "FREQ=WEEKLY;BYDAY=TU",
+    "iconEmoji": "🧘‍♀️"
+  }
 ]
