@@ -9,6 +9,7 @@ import { scraper as diaBeaconScraper } from "./dia-beacon.js";
 import { scraper as theYardBeaconScraper } from "./the-yard-beacon.js";
 import { scraper as repeatingEventsScraper } from "./repeating-events.js";
 import { scraper as beahiveBeaconScraper } from "./beahive-beacon.js";
+import { scraper as beaconGovScraper } from "./beacon-government.js";
 
 /**
  * A list of all available scrapers.
@@ -23,6 +24,7 @@ export const scrapers: Scraper[] = [
   theYardBeaconScraper,
   repeatingEventsScraper,
   beahiveBeaconScraper,
+  beaconGovScraper,
 ];
 
 /**
