@@ -62,6 +62,7 @@ const RepeatingEventRuleSchema = z.object({
   time: z.string().regex(/^\d{2}:\d{2}$/, "Time must be in HH:MM format"), // HH:MM format
   rrule: z.string().min(1), // Basic validation, rrule library handles parsing
   iconEmoji: z.string().optional(), // Optional emoji for Notion icon
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "End date must be in YYYY-MM-DD format").optional(), // Optional end date for events
 });
 
 const RepeatingEventsConfigSchema = z.array(RepeatingEventRuleSchema);
@@ -276,6 +277,14 @@ const scrapeRepeatingEvents = async (
     for (const rule of rules) {
       console.log(`[${SCRAPER_ID}] Processing rule: ${rule.ruleId}`);
       let rruleSet: InstanceType<typeof RRule>;
+      let effectiveEndDate = generationEndDate;
+      
+      // If rule has an endDate, use it to limit generation
+      if (rule.endDate) {
+        const ruleEndDate = toDate(`${rule.endDate}T23:59:59`, { timeZone: TIME_ZONE });
+        effectiveEndDate = ruleEndDate < generationEndDate ? ruleEndDate : generationEndDate;
+      }
+      
       try {
         // Ensure DTSTART is set correctly for rrule processing, respecting timezone
         // DTSTART is important for rules like 'last Thursday of month'
@@ -283,6 +292,11 @@ const scrapeRepeatingEvents = async (
         const rruleOptions = RRule.parseString(rule.rrule);
         rruleOptions.dtstart = generationStartDate; // Use generation start as DTSTART
         rruleOptions.tzid = TIME_ZONE; // Set timezone
+        
+        // Add UNTIL parameter if endDate is specified
+        if (rule.endDate) {
+          rruleOptions.until = toDate(`${rule.endDate}T23:59:59`, { timeZone: TIME_ZONE });
+        }
 
         rruleSet = new RRule(rruleOptions);
       } catch (e) {
@@ -295,12 +309,13 @@ const scrapeRepeatingEvents = async (
 
       const occurrences = rruleSet.between(
         generationStartDate,
-        generationEndDate,
+        effectiveEndDate,
         true // inc = inclusive
       );
 
+      const endDateInfo = rule.endDate ? ` (ends ${rule.endDate})` : '';
       console.log(
-        `[${SCRAPER_ID}]   Rule ${rule.ruleId}: Found ${occurrences.length} occurrences in window.`
+        `[${SCRAPER_ID}]   Rule ${rule.ruleId}: Found ${occurrences.length} occurrences in window${endDateInfo}.`
       );
 
       for (const occurrenceDate of occurrences) {

@@ -117,6 +117,20 @@
     "iconEmoji": "🎤"
   },
   {
+    "ruleId": "happy-valley-storytime",
+    "title": "Mr. Corbitt's Musical Storytime",
+    "location": "Happy Valley",
+    "time": "11:00",
+    "duration": {
+      "hours": 1
+    },
+    "rrule": "FREQ=WEEKLY;BYDAY=SU",
+    "url": "https://www.instagram.com/p/DJ6_gLMAnC-/",
+    "iconEmoji": "🎵",
+    "description": "Incorporating a mix of storytelling and various musical genres, Mr Corbitt delivers a diverse sensory experience to entertain your little ones! Perfect for kiddos 6 months to 6 years — this interactive musical storytime concert is fun, engaging, and a memorable summer weekend ritual for families.",
+    "endDate": "2025-08-18"
+  },
+  {
     "ruleId": "happy-valley-trivia",
     "title": "Geeks Who Drink Trivia",
     "location": "Happy Valley",
