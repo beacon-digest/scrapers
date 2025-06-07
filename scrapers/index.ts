@@ -11,6 +11,7 @@ import { scraper as repeatingEventsScraper } from "./repeating-events.js";
 import { scraper as beahiveBeaconScraper } from "./beahive-beacon.js";
 import { scraper as beaconGovScraper } from "./beacon-government.js";
 import { scraper as savageWonderScraper } from "./savage-wonder.js";
+import { scraper as bauGalleryScraper } from "./bau-gallery.js";
 
 /**
  * A list of all available scrapers.
@@ -27,6 +28,7 @@ export const scrapers: Scraper[] = [
   beahiveBeaconScraper,
   beaconGovScraper,
   savageWonderScraper,
+  bauGalleryScraper,
 ];
 
 /**

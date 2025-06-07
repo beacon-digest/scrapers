@@ -197,6 +197,14 @@
     "iconEmoji": "🎤"
   },
   {
+    "ruleId": "pillow-oats-trivia",
+    "title": "Trivia Night",
+    "location": "Pillow & Oats",
+    "time": "19:00",
+    "rrule": "FREQ=WEEKLY;BYDAY=TH",
+    "iconEmoji": "🗂️"
+  },
+  {
     "ruleId": "quinns-club-draw",
     "title": "Club Draw",
     "location": "Quinn's",
