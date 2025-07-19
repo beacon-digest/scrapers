@@ -16,6 +16,14 @@
     "iconEmoji": "🎤"
   },
   {
+    "ruleId": "barking-frog-trivia",
+    "title": "Trivia Night",
+    "location": "Barking Frog",
+    "time": "19:00",
+    "rrule": "FREQ=WEEKLY;BYDAY=MO",
+    "iconEmoji": "🗂️"
+  },
+  {
     "ruleId": "beacon-backyard-free-breakfast",
     "title": "Free Breakfast for Anyone in Need",
     "description": "Free breakfast provided by Beacon's Backyard.",
@@ -74,6 +82,19 @@
       "hours": 7
     },
     "iconEmoji": "👒"
+  },
+  {
+    "ruleId": "fareground-welcome-table",
+    "title": "Fareground Welcome Table",
+    "location": "First Presbyterian Church",
+    "description": "Please Join Us for FREE Community Dinners every Friday! Let’s come together to share food and community. All are welcome. Please share with anyone who might like to attend. This initiative is a collaboration between Fareground, First Presbyterian Church of Beacon, and Songbird.",
+    "url": "https://www.fareground.org/events",
+    "time": "17:30",
+    "duration": {
+      "hours": 1
+    },
+    "rrule": "FREQ=WEEKLY;BYDAY=FR",
+    "iconEmoji": "🍽️"
   },
   {
     "ruleId": "beacon-glades-disc-golf-doubles",
@@ -150,6 +171,14 @@
     "iconEmoji": "🕹️"
   },
   {
+    "ruleId": "lyonshare-songswap-open-mic",
+    "title": "The Song Swap Open Mic",
+    "location": "Lyonshare",
+    "time": "18:30",
+    "rrule": "FREQ=WEEKLY;BYDAY=MO",
+    "iconEmoji": "🎵"
+  },
+  {
     "ruleId": "howland-bridge-club",
     "title": "Bridge Club",
     "url": "https://www.howlandculturalcenter.org/the-bridge-club.html",
@@ -197,6 +226,17 @@
     "iconEmoji": "🎤"
   },
   {
+    "ruleId": "industrial-arts-bring-your-own-vinyl",
+    "title": "Bring Your Own Vinyl Night",
+    "location": "Industrial Arts",
+    "time": "15:00",
+    "duration": {
+      "hours": 6
+    },
+    "rrule": "FREQ=WEEKLY;BYDAY=MO",
+    "iconEmoji": "🎵"
+  },
+  {
     "ruleId": "pillow-oats-trivia",
     "title": "Trivia Night",
     "location": "Pillow & Oats",
@@ -211,6 +251,39 @@
     "time": "20:00",
     "rrule": "FREQ=MONTHLY;BYDAY=TU;BYSETPOS=1",
     "iconEmoji": "🧑‍🎨"
+  },
+  {
+    "ruleId": "quinns-jazz-jam",
+    "title": "Jazz Jam Monday",
+    "location": "Quinn's",
+    "time": "20:00",
+    "duration": {
+      "hours": 3
+    },
+    "rrule": "FREQ=MONTHLY;BYDAY=MO;BYSETPOS=1",
+    "iconEmoji": "🎷"
+  },
+  {
+    "ruleId": "quinns-karaoke",
+    "title": "Karaoke Night",
+    "location": "Quinn's",
+    "time": "21:00",
+    "duration": {
+      "hours": 3
+    },
+    "rrule": "FREQ=MONTHLY;BYDAY=TH;BYSETPOS=-1",
+    "iconEmoji": ""
+  },
+  {
+    "ruleId": "quinns-trivia-night",
+    "title": "Trivia x Ramen",
+    "location": "Quinn's",
+    "time": "20:00",
+    "duration": {
+      "hours": 3
+    },
+    "rrule": "FREQ=MONTHLY;BYDAY=SU;BYSETPOS=2",
+    "iconEmoji": "🍜"
   },
   {
     "ruleId": "roosevelt-drag-show",
