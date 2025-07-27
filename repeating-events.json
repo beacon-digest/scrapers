@@ -37,6 +37,16 @@
     "iconEmoji": "🍳"
   },
   {
+    "ruleId": "beacon-bike-group-ride",
+    "title": "Group Bike Ride & Drinks",
+    "description": "Join us for a friendly monthly group ride. Casual rides, all levels of bicyclists are welcome. Rides vary in length and difficulty — some are a slow, easy tour of town with kiddos in tow, where we stop to share our dreams and vision for bike-friendly roads in Beacon, others are longer, faster rides across the river to Newburgh or beyond. Check our Instagram, where we post route plans the week before.",
+    "location": "Dummy Light",
+    "url": "https://bikebeacon.org/events",
+    "time": "18:00",
+    "rrule": "FREQ=MONTHLY;BYDAY=TU;BYSETPOS=-1",
+    "iconEmoji": "🚴"
+  },
+  {
     "ruleId": "beacon-chess-club",
     "title": "Beacon Chess Club",
     "description": "All ages and skill levels welcome.",
