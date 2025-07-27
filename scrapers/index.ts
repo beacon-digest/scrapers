@@ -12,6 +12,7 @@ import { scraper as beahiveBeaconScraper } from "./beahive-beacon.js";
 import { scraper as beaconGovScraper } from "./beacon-government.js";
 import { scraper as savageWonderScraper } from "./savage-wonder.js";
 import { scraper as bauGalleryScraper } from "./bau-gallery.js";
+import { scraper as industrialArtsBrewingScraper } from "./industrial-arts-brewing.js";
 
 /**
  * A list of all available scrapers.
@@ -29,6 +30,7 @@ export const scrapers: Scraper[] = [
   beaconGovScraper,
   savageWonderScraper,
   bauGalleryScraper,
+  industrialArtsBrewingScraper,
 ];
 
 /**
