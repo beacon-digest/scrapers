@@ -20,7 +20,7 @@ const TIME_ZONE = "America/New_York";
  * Scrapes events for a given date range from the Howland Public Library calendar.
  */
 const scrapeHowlandLibraryEvents = async (
-  options: ScrapeOptions
+  options: ScrapeOptions,
 ): Promise<Event[]> => {
   const { startDate, endDate, browser } = options;
 
@@ -34,14 +34,14 @@ const scrapeHowlandLibraryEvents = async (
 
   console.log(
     `[${SCRAPER_ID}] Scraping events from ${formatDate(
-      startDate
-    )} to ${formatDate(endDate || startDate)}...`
+      startDate,
+    )} to ${formatDate(endDate || startDate)}...`,
   );
 
   try {
     page = await browser.newPage();
     await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" // Set a common user agent
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36", // Set a common user agent
     );
 
     for (const targetDate of datesToScrape) {
@@ -51,7 +51,7 @@ const scrapeHowlandLibraryEvents = async (
 
       console.log(`[${SCRAPER_ID}] Processing date: ${targetDateString}`);
       console.log(
-        `[${SCRAPER_ID}] Navigating to calendar month: ${calendarUrl}`
+        `[${SCRAPER_ID}] Navigating to calendar month: ${calendarUrl}`,
       );
 
       try {
@@ -66,14 +66,14 @@ const scrapeHowlandLibraryEvents = async (
         });
 
         console.log(
-          `[${SCRAPER_ID}] Calendar month loaded, extracting events for ${targetDateString}...`
+          `[${SCRAPER_ID}] Calendar month loaded, extracting events for ${targetDateString}...`,
         );
 
         // Extract JSON-LD scripts for the target date
         const eventsForDate = await page.evaluate(
           (dateStr, scraperId, locationName) => {
             const scripts = Array.from(
-              document.querySelectorAll("script[type='application/ld+json']")
+              document.querySelectorAll("script[type='application/ld+json']"),
             );
             const eventsList: Partial<Event>[] = []; // Use Partial initially
 
@@ -104,7 +104,7 @@ const scrapeHowlandLibraryEvents = async (
               } catch (e) {
                 console.error(
                   `[${scraperId}] Error parsing JSON-LD event data:`,
-                  e
+                  e,
                 );
               }
             }
@@ -112,11 +112,11 @@ const scrapeHowlandLibraryEvents = async (
           },
           targetDateString,
           SCRAPER_ID,
-          LOCATION_NAME
+          LOCATION_NAME,
         );
 
         console.log(
-          `[${SCRAPER_ID}] Found ${eventsForDate.length} potential events on ${targetDateString}. Fetching details...`
+          `[${SCRAPER_ID}] Found ${eventsForDate.length} potential events on ${targetDateString}. Fetching details...`,
         );
 
         // Get full details for each event found
@@ -124,7 +124,7 @@ const scrapeHowlandLibraryEvents = async (
           if (event.url) {
             try {
               console.log(
-                `[${SCRAPER_ID}] Navigating to event page: ${event.url}`
+                `[${SCRAPER_ID}] Navigating to event page: ${event.url}`,
               );
               await page.goto(event.url, {
                 waitUntil: "networkidle0",
@@ -138,20 +138,35 @@ const scrapeHowlandLibraryEvents = async (
               // --- Get Date and Time ---
               let headerText = "";
               try {
+                // Try to get the header text from h3.event-meta
                 headerText = await page.$eval(
                   "h3.event-meta",
-                  (el) => el.textContent || ""
+                  (el) => el.textContent || "",
                 );
               } catch {
-                console.warn(
-                  `[${SCRAPER_ID}] Could not find event meta header (h3.event-meta) on ${event.url}`
-                );
+                try {
+                  // If h3.event-meta doesn't exist, try to get it from h3 tag directly (new format)
+                  headerText = await page.$eval(
+                    "h3",
+                    (el) => el.textContent || "",
+                  );
+                } catch {
+                  console.warn(
+                    `[${SCRAPER_ID}] Could not find event meta header on ${event.url}`,
+                  );
+                }
               }
+
+              // For debugging
+              console.log(`[${SCRAPER_ID}] Event URL: ${event.url}`);
+              console.log(`[${SCRAPER_ID}] Event Title: ${event.title}`);
 
               let eventDate = targetDateString; // Default to the target date
 
+              // Updated regex to handle cases where date and time run together
+              // For example: "Wednesday, August 204:00—4:30 PM"
               const headerDateMatch = headerText.match(
-                /([A-Za-z]+),\s+([A-Za-z]+)\s+(\d{1,2})/
+                /([A-Za-z]+),\s+([A-Za-z]+)\s+(\d{1,2})(?:\d{1,2}:\d{2})?/,
               );
               if (headerDateMatch) {
                 const [, , month, day] = headerDateMatch;
@@ -162,12 +177,67 @@ const scrapeHowlandLibraryEvents = async (
                 }
               }
 
-              const timeText = await page.$eval(
-                "span.event-time",
-                (el) => el.textContent || ""
-              );
+              let timeText = "";
+              try {
+                // Try to get time from span.event-time
+                timeText = await page.$eval(
+                  "span.event-time",
+                  (el) => el.textContent || "",
+                );
+              } catch {
+                // If span.event-time doesn't exist, try to extract time from the header text directly
+                console.log(`[${SCRAPER_ID}] Header text: "${headerText}"`);
 
+                // Look for cases where time format is "X:XX—X:XX AM/PM" with period at the end
+                // This handles patterns like "4:00—4:30 PM", "9:00—9:30 AM", etc.
+                const timeRangeMatch = headerText.match(
+                  /(\d{1,2}):(\d{2})(?:—|-|\s+to\s+)(\d{1,2}):(\d{2})\s*(AM|PM)/i,
+                );
+
+                if (timeRangeMatch) {
+                  const [, startHour, startMin, endHour, endMin, period] =
+                    timeRangeMatch;
+                  // Add period to both times to ensure they're both treated the same
+                  timeText = `${startHour}:${startMin} ${period}—${endHour}:${endMin} ${period}`;
+                  console.log(
+                    `[${SCRAPER_ID}] Extracted time range with single period: "${timeText}"`,
+                  );
+                } else {
+                  // Look for fully specified time ranges "X:XX AM/PM—X:XX AM/PM"
+                  const fullTimeRangeMatch = headerText.match(
+                    /(\d{1,2}):(\d{2})\s*(AM|PM)(?:—|-|\s+to\s+)(\d{1,2}):(\d{2})\s*(AM|PM)/i,
+                  );
+
+                  if (fullTimeRangeMatch) {
+                    timeText = fullTimeRangeMatch[0];
+                    console.log(
+                      `[${SCRAPER_ID}] Extracted fully specified time range: "${timeText}"`,
+                    );
+                  } else {
+                    // Last resort - just find any time-like pattern
+                    const basicTimeMatch = headerText.match(
+                      /\d{1,2}:\d{2}.*?(AM|PM)/i,
+                    );
+
+                    if (basicTimeMatch) {
+                      timeText = basicTimeMatch[0];
+                      console.log(
+                        `[${SCRAPER_ID}] Extracted basic time from header: "${timeText}"`,
+                      );
+                    } else {
+                      console.warn(
+                        `[${SCRAPER_ID}] Could not find time information on ${event.url}`,
+                      );
+                    }
+                  }
+                }
+              }
+
+              console.log(`[${SCRAPER_ID}] Parsing time text: "${timeText}"`);
               const { startTime, endTime } = parseTimeText(timeText);
+              console.log(
+                `[${SCRAPER_ID}] Parsed times: start=${startTime}, end=${endTime}`,
+              );
 
               if (startTime) {
                 event.start_at = toDate(`${eventDate}T${startTime}`, {
@@ -176,7 +246,7 @@ const scrapeHowlandLibraryEvents = async (
               } else {
                 // Fallback if time parsing fails - keep placeholder or set to start of day?
                 console.warn(
-                  `[${SCRAPER_ID}] Could not parse start time from "${timeText}" for event: ${event.title}`
+                  `[${SCRAPER_ID}] Could not parse start time from "${timeText}" for event: ${event.title}`,
                 );
                 // Optionally default to start of day:
                 event.start_at = toDate(`${eventDate}T00:00:00`, {
@@ -195,7 +265,7 @@ const scrapeHowlandLibraryEvents = async (
               // --- Get Description ---
               const descriptionHtml = await page.$eval(
                 ".event-description",
-                (el) => el.innerHTML
+                (el) => el.innerHTML,
               );
               event.description = convertHtmlToMarkdown(descriptionHtml);
 
@@ -209,33 +279,33 @@ const scrapeHowlandLibraryEvents = async (
             } catch (detailError) {
               console.error(
                 `[${SCRAPER_ID}] Error fetching details for event ${event.title} (${event.url}):`,
-                detailError
+                detailError,
               );
             }
           } else {
             console.warn(
-              `[${SCRAPER_ID}] Event "${event.title}" has no URL, skipping detail fetching.`
+              `[${SCRAPER_ID}] Event "${event.title}" has no URL, skipping detail fetching.`,
             );
           }
         } // End loop for fetching event details
       } catch (monthError) {
         console.error(
           `[${SCRAPER_ID}] Error processing date ${targetDateString}:`,
-          monthError
+          monthError,
         );
         // Continue to the next date
       }
     } // End loop for dates
 
     console.log(
-      `[${SCRAPER_ID}] Finished scraping. Found ${allEvents.length} total events.`
+      `[${SCRAPER_ID}] Finished scraping. Found ${allEvents.length} total events.`,
     );
 
     // Validate all collected events
     try {
       const validationResult = EventsArraySchema.parse(allEvents);
       console.log(
-        `[${SCRAPER_ID}] Event validation successful for ${validationResult.length} events.`
+        `[${SCRAPER_ID}] Event validation successful for ${validationResult.length} events.`,
       );
       return validationResult as Event[]; // Type assertion is safe after validation
     } catch (validationError) {
@@ -244,8 +314,8 @@ const scrapeHowlandLibraryEvents = async (
       // For now, throwing an error to indicate failure
       throw new Error(
         `[${SCRAPER_ID}] Event validation failed: ${JSON.stringify(
-          validationError
-        )}`
+          validationError,
+        )}`,
       );
     }
   } catch (error) {
@@ -298,14 +368,35 @@ function parseTimeText(timeText: string): {
   if (!timeText) return {};
 
   // Tries different regex patterns to match common time formats
+  console.log(`[${SCRAPER_ID}] Parsing time text: "${timeText}"`);
 
   // Format: "10:00 AM—1:00 PM" (handles different separators: —, -, to)
   let match = timeText.match(
-    /(\d{1,2}):(\d{2})\s*(AM|PM)(?:—|-|\s+to\s+)(\d{1,2}):(\d{2})\s*(AM|PM)/i
+    /(\d{1,2}):(\d{2})\s*(AM|PM)(?:—|-|\s+to\s+)(\d{1,2}):(\d{2})\s*(AM|PM)/i,
   );
   if (match) {
     const [, startHour, startMin, startPeriod, endHour, endMin, endPeriod] =
       match;
+    console.log(
+      `[${SCRAPER_ID}] Matched full format time range with separate periods`,
+    );
+    return {
+      startTime: convert12to24(startHour, startMin, startPeriod),
+      endTime: convert12to24(endHour, endMin, endPeriod),
+    };
+  }
+
+  // Format: "4:00 PM—4:30 PM" (repeated AM/PM)
+  // This handles our reformatted cases where we explicitly add the period to both times
+  match = timeText.match(
+    /(\d{1,2}):(\d{2})\s*(AM|PM)(?:—|-|\s+to\s+)(\d{1,2}):(\d{2})\s*(AM|PM)/i,
+  );
+  if (match) {
+    const [, startHour, startMin, startPeriod, endHour, endMin, endPeriod] =
+      match;
+    console.log(
+      `[${SCRAPER_ID}] Matched reformatted time with repeated periods`,
+    );
     return {
       startTime: convert12to24(startHour, startMin, startPeriod),
       endTime: convert12to24(endHour, endMin, endPeriod),
@@ -314,35 +405,53 @@ function parseTimeText(timeText: string): {
 
   // Format: "12:00—2:30 PM" (single AM/PM marker at the end)
   match = timeText.match(
-    /(\d{1,2}):(\d{2})(?:—|-|\s+to\s+)(\d{1,2}):(\d{2})\s*(AM|PM)/i
+    /(\d{1,2}):(\d{2})(?:—|-|\s+to\s+)(\d{1,2}):(\d{2})\s*(AM|PM)/i,
   );
   if (match) {
     const [, startHour, startMin, endHour, endMin, period] = match;
     const isEndPM = period.toUpperCase() === "PM";
-    // Determine if start time is AM or PM - assumes start time is AM unless end time is also AM or start hour is 12
-    // This logic can be ambiguous. Assumes start is before end.
     const startH = Number.parseInt(startHour, 10);
     const endH = Number.parseInt(endHour, 10);
-    // Basic assumption: If end is PM, start is likely AM unless start hour > end hour (e.g. 10 PM - 1 AM), or start=12
-    // More robust: If start hour >= end hour (and not 12), and end is PM, start is likely PM too. If end is AM, start must be AM.
+
+    // Improved period inference logic:
+    // 1. If start hour equals end hour (like "4:00-4:30 PM"), both must be same period
+    // 2. If start < end and both < 12, they're likely in same period
     let isStartPM = isEndPM;
-    if (startH < 12 && startH > endH && isEndPM) {
-      // e.g. 10 (AM) - 1 (PM)
-      isStartPM = !isEndPM;
+
+    console.log(
+      `[${SCRAPER_ID}] Time inference: startH=${startH}, endH=${endH}, period=${period}`,
+    );
+
+    if (startH === endH) {
+      // Same hour like "4:00-4:30 PM" - must be same period
+      isStartPM = isEndPM;
+      console.log(
+        `[${SCRAPER_ID}] Same hour case: both ${isStartPM ? "PM" : "AM"}`,
+      );
+    } else if (startH < endH && startH < 12 && endH < 12) {
+      // Sequential hours both before noon like "9:00-11:30 AM" - likely same period
+      isStartPM = isEndPM;
+      console.log(
+        `[${SCRAPER_ID}] Sequential hours < 12: both ${isStartPM ? "PM" : "AM"}`,
+      );
     } else if (startH === 12) {
-      // 12 PM is PM, 12 AM is AM
-      isStartPM = isEndPM; // Simplified: If end is PM, 12 is PM. If end is AM, 12 is AM (unlikely range like 12AM-8AM?)
-    } else if (startH >= endH && isEndPM) {
-      // e.g. 2 PM - 4 PM or 11 PM - 1 AM (end is AM here though)
-      // This case is tricky without knowing AM/PM for start implicitly
-      // Let's refine: If startH >= endH, assume start period is the one *before* end period unless startH==12
-      if (startH >= endH && startH !== 12) {
-        isStartPM = !isEndPM;
-      }
-      // else if startH == 12, already handled
-      else {
-        isStartPM = isEndPM;
-      }
+      // 12 is special case (noon or midnight)
+      isStartPM = isEndPM;
+      console.log(
+        `[${SCRAPER_ID}] 12 o'clock case: both ${isStartPM ? "PM" : "AM"}`,
+      );
+    } else if (startH < 12 && startH > endH && isEndPM) {
+      // Like "10:00-1:30 PM" - start is AM, end is PM
+      isStartPM = false;
+      console.log(
+        `[${SCRAPER_ID}] Start < 12 & start > end & end is PM: start=AM, end=PM`,
+      );
+    } else {
+      // Default to same period for other cases
+      isStartPM = isEndPM;
+      console.log(
+        `[${SCRAPER_ID}] Default case: both ${isStartPM ? "PM" : "AM"}`,
+      );
     }
 
     return {
@@ -353,7 +462,7 @@ function parseTimeText(timeText: string): {
 
   // Format: "7-8 PM" or "7 AM - 8 AM" (handles different separators)
   match = timeText.match(
-    /(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?(?:—|-|\s+to\s+)(\d{1,2})(?::(\d{2}))?\s*(AM|PM)/i
+    /(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?(?:—|-|\s+to\s+)(\d{1,2})(?::(\d{2}))?\s*(AM|PM)/i,
   );
   if (match) {
     let [
@@ -365,18 +474,56 @@ function parseTimeText(timeText: string): {
       endMin = "00",
       endPeriod,
     ] = match;
+
+    console.log(
+      `[${SCRAPER_ID}] Matched hour-only format: ${startHour}${startMin ? ":" + startMin : ""}${startPeriod ? " " + startPeriod : ""}-${endHour}${endMin ? ":" + endMin : ""} ${endPeriod}`,
+    );
+
     // If startPeriod is missing, infer from endPeriod based on hours
     if (!startPeriod) {
       const startH = Number.parseInt(startHour, 10);
       const endH = Number.parseInt(endHour, 10);
       const isEndPM = endPeriod.toUpperCase() === "PM";
-      if (startH === 12) startPeriod = endPeriod; // Assume 12 PM - 1 PM etc.
-      else if (startH < 12 && startH > endH && isEndPM)
-        startPeriod = "AM"; // e.g. 10 - 1 PM -> start=AM
-      else if (startH >= endH && !isEndPM)
-        startPeriod = "AM"; // e.g. 10 - 8 AM -> start=AM (unlikely 10PM - 8AM?)
-      else startPeriod = endPeriod; // Default assumption e.g., 7-8 PM -> start is PM
+
+      console.log(
+        `[${SCRAPER_ID}] Time period inference: startH=${startH}, endH=${endH}, endPeriod=${endPeriod}`,
+      );
+
+      // Improved period inference logic:
+      // 1. If hours are the same (like "4-4:30 PM"), both must be same period
+      if (startH === endH) {
+        startPeriod = endPeriod;
+        console.log(`[${SCRAPER_ID}] Same hour: both ${endPeriod}`);
+      }
+      // 2. If hours are both small and sequential (like "9-10 AM"), likely same period
+      else if (startH < endH && startH < 12 && endH < 12) {
+        startPeriod = endPeriod;
+        console.log(`[${SCRAPER_ID}] Sequential hours < 12: both ${endPeriod}`);
+      }
+      // 3. Special case for noon
+      else if (startH === 12) {
+        startPeriod = endPeriod;
+        console.log(
+          `[${SCRAPER_ID}] 12 o'clock special case: both ${endPeriod}`,
+        );
+      }
+      // 4. Cases like "10-1 PM" where start hour is before noon but end is after
+      else if (startH < 12 && startH > endH && isEndPM) {
+        startPeriod = "AM";
+        console.log(`[${SCRAPER_ID}] Crossing noon case: start=AM, end=PM`);
+      }
+      // 5. Cases like "10-8 AM" - both must be AM (overnight would be specified differently)
+      else if (startH >= endH && !isEndPM) {
+        startPeriod = "AM";
+        console.log(`[${SCRAPER_ID}] Both morning hours: both AM`);
+      }
+      // Default - assume same period
+      else {
+        startPeriod = endPeriod;
+        console.log(`[${SCRAPER_ID}] Default case: both ${endPeriod}`);
+      }
     }
+
     return {
       startTime: convert12to24(startHour, startMin, startPeriod),
       endTime: convert12to24(endHour, endMin, endPeriod),
@@ -406,9 +553,16 @@ function parseTimeText(timeText: string): {
 function convert12to24(hour: string, min: string, period: string): string {
   let h = Number.parseInt(hour, 10);
   const isPM = period?.toUpperCase() === "PM";
-  if (isPM && h !== 12) h += 12;
-  if (!isPM && h === 12) h = 0; // Midnight case
-  return `${h.toString().padStart(2, "0")}:${min.padStart(2, "0")}:00`;
+
+  // Convert 12-hour format to 24-hour format
+  if (isPM && h !== 12) h += 12; // 1 PM -> 13:00
+  if (!isPM && h === 12) h = 0; // 12 AM -> 00:00
+
+  const result = `${h.toString().padStart(2, "0")}:${min.padStart(2, "0")}:00`;
+  console.log(
+    `[${SCRAPER_ID}] Converting ${hour}:${min} ${period} to ${result}`,
+  );
+  return result;
 }
 
 // Export the scraper object conforming to the Scraper interface

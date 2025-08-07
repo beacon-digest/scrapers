@@ -43,7 +43,7 @@
     "location": "Dummy Light",
     "url": "https://bikebeacon.org/events",
     "time": "18:00",
-    "rrule": "FREQ=MONTHLY;BYDAY=TU;BYSETPOS=-1",
+    "rrule": "FREQ=MONTHLY;BYDAY=TH;BYSETPOS=-1",
     "iconEmoji": "🚴"
   },
   {
