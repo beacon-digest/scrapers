@@ -181,6 +181,19 @@
     "iconEmoji": "🕹️"
   },
   {
+    "ruleId": "lit-lit",
+    "title": "Lit Lit Writers Open Mic",
+    "location": "Howland Cultural Center",
+    "description": "Please get there by 6:30 PM if you want to sign up to read. Lit Lit is a monthly literary open mic series in Beacon, NY. We (usually) meet the first Friday of every month at the Howland Cultural Center. To help the Howland meet its costs, they ask for a donation of $5 per person (no one will be turned away for lack of funds). Lit Lit is all about welcoming writers from every walk of life and every genre, to share their own writing of up to 5 minutes in length. We love you and we want to hear what you’ve been working on. Or just come and listen. Wine, beer, soft drinks and snacks will be available by donation.",
+    "time": "19:00",
+    "duration": {
+      "hours": 2
+    },
+    "url": "https://donnaminkowitz.com/lit-lit/",
+    "rrule": "FREQ=MONTHLY;BYDAY=FR;BYSETPOS=1",
+    "iconEmoji": "📚"
+  },
+  {
     "ruleId": "lyonshare-songswap-open-mic",
     "title": "The Song Swap Open Mic",
     "location": "Lyonshare",
@@ -245,6 +258,30 @@
     },
     "rrule": "FREQ=WEEKLY;BYDAY=MO",
     "iconEmoji": "🎵"
+  },
+  {
+    "ruleId": "mutual-aid-beacon-food-distro-seniors",
+    "title": "Mutual Aid Beacon Food Distribution for Seniors",
+    "location": "Robert Cahill Drive",
+    "description": "Mutual Aid Beacon runs a drive thru free food distribution on the 1st and 3rd Wednesdays of every month at Memorial Park in Beacon. First Wednesday is for seniors age 60+ (or with a senior in the household), third Wednesday is open to all. Enter the park near Ron’s Ice Cream.",
+    "time": "9:00",
+    "duration": {
+      "hours": 1
+    },
+    "rrule": "FREQ=MONTHLY;BYDAY=WE;BYSETPOS=1",
+    "iconEmoji": "🍅"
+  },
+  {
+    "ruleId": "mutual-aid-beacon-food-distro",
+    "title": "Mutual Aid Beacon Food Distribution",
+    "location": "Robert Cahill Drive",
+    "description": "Mutual Aid Beacon runs a drive thru free food distribution on the 1st and 3rd Wednesdays of every month at Memorial Park in Beacon. First Wednesday is for seniors age 60+ (or with a senior in the household), third Wednesday is open to all. Enter the park near Ron’s Ice Cream.",
+    "time": "9:00",
+    "duration": {
+      "hours": 1
+    },
+    "rrule": "FREQ=MONTHLY;BYDAY=WE;BYSETPOS=3",
+    "iconEmoji": "🍅"
   },
   {
     "ruleId": "pillow-oats-trivia",
