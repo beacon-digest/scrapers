@@ -160,21 +160,93 @@ const scrapeHowlandLibraryEvents = async (
               // For debugging
               console.log(`[${SCRAPER_ID}] Event URL: ${event.url}`);
               console.log(`[${SCRAPER_ID}] Event Title: ${event.title}`);
+              console.log(`[${SCRAPER_ID}] Raw header text: "${headerText}"`);
 
               let eventDate = targetDateString; // Default to the target date
 
               // Updated regex to handle cases where date and time run together
-              // For example: "Wednesday, August 204:00—4:30 PM"
+              // For example: "Wednesday, August 204:00—4:30 PM" or "Wednesday, September 91:00 AM"
+              // We want to capture day (1-2 digits) and separate it from any time that follows
+              // Use a more restrictive approach: capture the longest sequence of digits after month
+              // Then validate and correct if it includes time digits
               const headerDateMatch = headerText.match(
-                /([A-Za-z]+),\s+([A-Za-z]+)\s+(\d{1,2})(?:\d{1,2}:\d{2})?/,
+                /([A-Za-z]+),\s+([A-Za-z]+)\s+(\d+)/,
               );
+
+              // Additional validation and correction for when day/time run together
+              let correctedDay = null;
               if (headerDateMatch) {
-                const [, , month, day] = headerDateMatch;
+                const potentialDay = headerDateMatch[3];
+                console.log(
+                  `[${SCRAPER_ID}] Potential day captured: "${potentialDay}"`,
+                );
+
+                // Check if this looks like day+time (e.g., "310" from "310:00")
+                // Look for pattern where captured digits are followed by ":XX"
+                const afterDayMatch = headerText.match(
+                  new RegExp(
+                    `([A-Za-z]+),\\s+([A-Za-z]+)\\s+${potentialDay}(:\\d{2})`,
+                  ),
+                );
+
+                if (afterDayMatch && afterDayMatch[3]) {
+                  // We captured day+time digits, need to separate them
+                  console.log(
+                    `[${SCRAPER_ID}] Detected day+time pattern: "${potentialDay}${afterDayMatch[3]}"`,
+                  );
+
+                  // Try different splits: single digit day (most common) or double digit day
+                  for (let dayLength = 1; dayLength <= 2; dayLength++) {
+                    if (potentialDay.length > dayLength) {
+                      const testDay = potentialDay.substring(0, dayLength);
+                      const testDayNum = parseInt(testDay);
+                      const remainingDigits = potentialDay.substring(dayLength);
+
+                      // Check if this makes sense (valid day 1-31, and remaining digits could be hour)
+                      if (
+                        testDayNum >= 1 &&
+                        testDayNum <= 31 &&
+                        parseInt(remainingDigits) >= 0 &&
+                        parseInt(remainingDigits) <= 23
+                      ) {
+                        correctedDay = testDay;
+                        console.log(
+                          `[${SCRAPER_ID}] Corrected day from "${potentialDay}" to "${correctedDay}" (remaining: "${remainingDigits}")`,
+                        );
+                        break;
+                      }
+                    }
+                  }
+                } else if (
+                  parseInt(potentialDay) >= 1 &&
+                  parseInt(potentialDay) <= 31
+                ) {
+                  // Normal case - captured day is valid and not mixed with time
+                  correctedDay = potentialDay;
+                }
+              }
+              if (headerDateMatch && correctedDay) {
+                const [, , month] = headerDateMatch;
+                const day = correctedDay;
                 const year = targetDate.getFullYear(); // Use year from targetDate
                 const monthNumber = getMonthNumber(month);
+                console.log(
+                  `[${SCRAPER_ID}] Parsed header date: month=${month}, day=${day}, year=${year}, monthNumber=${monthNumber}`,
+                );
                 if (monthNumber) {
                   eventDate = `${year}-${monthNumber}-${day.padStart(2, "0")}`;
+                  console.log(
+                    `[${SCRAPER_ID}] Constructed eventDate: ${eventDate}`,
+                  );
+                } else {
+                  console.warn(
+                    `[${SCRAPER_ID}] Could not get month number for: ${month}`,
+                  );
                 }
+              } else {
+                console.log(
+                  `[${SCRAPER_ID}] No valid header date match found in: "${headerText}"`,
+                );
               }
 
               let timeText = "";
@@ -240,9 +312,31 @@ const scrapeHowlandLibraryEvents = async (
               );
 
               if (startTime) {
-                event.start_at = toDate(`${eventDate}T${startTime}`, {
-                  timeZone: TIME_ZONE,
-                }).toISOString();
+                const dateTimeString = `${eventDate}T${startTime}`;
+                console.log(
+                  `[${SCRAPER_ID}] Constructing start datetime: "${dateTimeString}" in timezone: ${TIME_ZONE}`,
+                );
+                try {
+                  const startDate = toDate(dateTimeString, {
+                    timeZone: TIME_ZONE,
+                  });
+                  console.log(
+                    `[${SCRAPER_ID}] Created start Date object: ${startDate}`,
+                  );
+                  event.start_at = startDate.toISOString();
+                  console.log(
+                    `[${SCRAPER_ID}] Start ISO string: ${event.start_at}`,
+                  );
+                } catch (error) {
+                  console.error(
+                    `[${SCRAPER_ID}] Error creating start date from "${dateTimeString}":`,
+                    error,
+                  );
+                  // Fallback to start of day
+                  event.start_at = toDate(`${eventDate}T00:00:00`, {
+                    timeZone: TIME_ZONE,
+                  }).toISOString();
+                }
               } else {
                 // Fallback if time parsing fails - keep placeholder or set to start of day?
                 console.warn(
@@ -255,9 +349,31 @@ const scrapeHowlandLibraryEvents = async (
               }
 
               if (endTime) {
-                event.end_at = toDate(`${eventDate}T${endTime}`, {
-                  timeZone: TIME_ZONE,
-                }).toISOString();
+                const endDateTimeString = `${eventDate}T${endTime}`;
+                console.log(
+                  `[${SCRAPER_ID}] Constructing end datetime: "${endDateTimeString}" in timezone: ${TIME_ZONE}`,
+                );
+                try {
+                  const endDate = toDate(endDateTimeString, {
+                    timeZone: TIME_ZONE,
+                  });
+                  console.log(
+                    `[${SCRAPER_ID}] Created end Date object: ${endDate}`,
+                  );
+                  event.end_at = endDate.toISOString();
+                  console.log(
+                    `[${SCRAPER_ID}] End ISO string: ${event.end_at}`,
+                  );
+                } catch (error) {
+                  console.error(
+                    `[${SCRAPER_ID}] Error creating end date from "${endDateTimeString}":`,
+                    error,
+                  );
+                  // Fallback to end of day
+                  event.end_at = toDate(`${eventDate}T23:59:59`, {
+                    timeZone: TIME_ZONE,
+                  }).toISOString();
+                }
               } else {
                 event.end_at = undefined; // Ensure end_at is undefined if not parsed
               }

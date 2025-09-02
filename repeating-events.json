@@ -226,17 +226,6 @@
     "iconEmoji": "🎻"
   },
   {
-    "ruleId": "howland-meditation-class",
-    "title": "Meditation Class",
-    "location": "Howland Cultural Center",
-    "time": "19:00",
-    "duration": {
-      "minutes": 90
-    },
-    "rrule": "FREQ=WEEKLY;BYDAY=TH",
-    "iconEmoji": "🧘"
-  },
-  {
     "ruleId": "howland-open-mic",
     "title": "Howland Cultural Center Open Mic",
     "location": "Howland Cultural Center",
