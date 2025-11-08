@@ -253,7 +253,7 @@
     "title": "Mutual Aid Beacon Food Distribution for Seniors",
     "location": "Robert Cahill Drive",
     "description": "Mutual Aid Beacon runs a drive thru free food distribution on the 1st and 3rd Wednesdays of every month at Memorial Park in Beacon. First Wednesday is for seniors age 60+ (or with a senior in the household), third Wednesday is open to all. Enter the park near Ron’s Ice Cream.",
-    "time": "9:00",
+    "time": "09:00",
     "duration": {
       "hours": 1
     },
@@ -265,7 +265,7 @@
     "title": "Mutual Aid Beacon Food Distribution",
     "location": "Robert Cahill Drive",
     "description": "Mutual Aid Beacon runs a drive thru free food distribution on the 1st and 3rd Wednesdays of every month at Memorial Park in Beacon. First Wednesday is for seniors age 60+ (or with a senior in the household), third Wednesday is open to all. Enter the park near Ron’s Ice Cream.",
-    "time": "9:00",
+    "time": "09:00",
     "duration": {
       "hours": 1
     },
@@ -329,18 +329,6 @@
     "time": "21:00",
     "rrule": "FREQ=WEEKLY;BYDAY=FR",
     "iconEmoji": "💃"
-  },
-  {
-    "ruleId": "sibling-storytime",
-    "title": "Storytime",
-    "description": "Join us every Sunday morning at 9am for Storytime at Sibling! We read from 9 to 10am, and kiddos of all ages are welcome. Come read stories with us!",
-    "location": "Sibling",
-    "time": "09:00",
-    "duration": {
-      "hours": 1
-    },
-    "rrule": "FREQ=WEEKLY;BYDAY=SU",
-    "iconEmoji": "📚"
   },
   {
     "ruleId": "two-way-brewing-comedy-night",

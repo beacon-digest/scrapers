@@ -195,8 +195,8 @@ const scrapeHowlandLibraryEvents = async (
                     `[${SCRAPER_ID}] Detected day+time pattern: "${potentialDay}${afterDayMatch[3]}"`,
                   );
 
-                  // Try different splits: single digit day (most common) or double digit day
-                  for (let dayLength = 1; dayLength <= 2; dayLength++) {
+                  // Try different splits: double digit day first, then single digit day
+                  for (let dayLength = 2; dayLength >= 1; dayLength--) {
                     if (potentialDay.length > dayLength) {
                       const testDay = potentialDay.substring(0, dayLength);
                       const testDayNum = parseInt(testDay);
