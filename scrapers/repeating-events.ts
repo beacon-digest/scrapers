@@ -27,6 +27,161 @@ import { formatDate } from "../utils/date.js"; // For logging
 // Import Notion client/query functions when available
 // import { queryNotionForExistingIds, getNotionClient } from "../api/notion-helpers.js";
 
+// --- DST HANDLING DOCUMENTATION ---
+/**
+ * DAYLIGHT SAVING TIME (DST) HANDLING STRATEGY
+ *
+ * This scraper implements robust timezone handling to prevent events from appearing
+ * on the wrong day due to Daylight Saving Time transitions. Here's how it works:
+ *
+ * 1. STABLE REFERENCE TIMES: All RRule DTSTARTs use noon (12:00) to avoid
+ *    edge cases during DST transitions (2 AM spring forward, 2 AM fall back).
+ *
+ * 2. CONSISTENT TIMEZONE OPERATIONS: All date operations explicitly specify
+ *    the target timezone (America/New_York) using date-fns-tz functions.
+ *
+ * 3. DATE VALIDATION: Each generated event is validated to ensure the final
+ *    datetime lands on the expected date, preventing silent date shifts.
+ *
+ * 4. DST TRANSITION TESTING: The scraper validates all rules against known
+ *    DST transition dates to proactively identify potential issues.
+ *
+ * WHY THIS MATTERS:
+ * - During DST transitions, naive date/time operations can shift events by a day
+ * - RRule library can return ambiguous dates during transitions
+ * - Converting between UTC and local time requires careful timezone handling
+ *
+ * MAINTENANCE NOTES:
+ * - If events still appear on wrong days after DST changes, check the
+ *   validateDSTTransitions() function output for specific problem rules
+ * - Consider adjusting event times (e.g., avoid 1-3 AM) for problematic rules
+ * - Test new rules around March and November DST transition dates
+ */
+
+// --- Timezone Utilities for DST-Safe Operations ---
+
+/**
+ * Creates a timezone-aware date that is immune to DST transitions
+ * by always using noon as the reference time
+ */
+function createDSTSafeDate(dateStr: string, timezone: string): Date {
+  return toDate(`${dateStr}T12:00:00`, { timeZone: timezone });
+}
+
+/**
+ * Safely converts an event time to the target timezone while preserving the intended date
+ * This prevents events from shifting to wrong days during DST transitions
+ */
+function createEventDateTime(
+  dateStr: string,
+  timeStr: string,
+  timezone: string,
+): {
+  dateTime: Date;
+  actualDateStr: string;
+  isValid: boolean;
+} {
+  const eventDateTime = toDate(`${dateStr}T${timeStr}:00`, {
+    timeZone: timezone,
+  });
+  const actualDateStr = formatInTimeZone(eventDateTime, timezone, "yyyy-MM-dd");
+
+  return {
+    dateTime: eventDateTime,
+    actualDateStr,
+    isValid: actualDateStr === dateStr,
+  };
+}
+
+/**
+ * Enhanced RRule options builder that handles DST transitions properly
+ */
+function buildDSTSafeRRuleOptions(
+  rruleString: string,
+  referenceDate: Date,
+  timezone: string,
+  endDate?: string,
+): any {
+  const options = RRule.parseString(rruleString);
+
+  // Use a stable midday reference to avoid DST edge cases
+  const referenceDateStr = formatInTimeZone(
+    referenceDate,
+    timezone,
+    "yyyy-MM-dd",
+  );
+  options.dtstart = createDSTSafeDate(referenceDateStr, timezone);
+  options.tzid = timezone;
+
+  if (endDate) {
+    options.until = toDate(`${endDate}T23:59:59`, { timeZone: timezone });
+  }
+
+  return options;
+}
+
+/**
+ * Test utility to validate event generation around DST transitions
+ * This helps identify potential issues before they affect production
+ */
+function validateDSTTransitions(
+  rules: RepeatingEventRule[],
+  timezone: string,
+): { warnings: string[]; errors: string[] } {
+  const warnings: string[] = [];
+  const errors: string[] = [];
+
+  // Common DST transition dates for America/New_York
+  const dstTransitionDates = [
+    "2024-03-10", // Spring forward 2024
+    "2024-11-03", // Fall back 2024
+    "2025-03-09", // Spring forward 2025
+    "2025-11-02", // Fall back 2025
+    "2026-03-08", // Spring forward 2026
+    "2026-11-01", // Fall back 2026
+  ];
+
+  for (const rule of rules) {
+    for (const transitionDate of dstTransitionDates) {
+      // Test day before, day of, and day after transition
+      const testDates = [
+        formatInTimeZone(
+          add(toDate(`${transitionDate}T12:00:00`, { timeZone: timezone }), {
+            days: -1,
+          }),
+          timezone,
+          "yyyy-MM-dd",
+        ),
+        transitionDate,
+        formatInTimeZone(
+          add(toDate(`${transitionDate}T12:00:00`, { timeZone: timezone }), {
+            days: 1,
+          }),
+          timezone,
+          "yyyy-MM-dd",
+        ),
+      ];
+
+      for (const testDate of testDates) {
+        const eventResult = createEventDateTime(testDate, rule.time, timezone);
+        if (!eventResult.isValid) {
+          errors.push(
+            `Rule ${rule.ruleId}: Event time ${rule.time} on ${testDate} results in date shift to ${eventResult.actualDateStr}`,
+          );
+        }
+      }
+    }
+  }
+
+  if (warnings.length > 0 || errors.length > 0) {
+    console.log(
+      `[${SCRAPER_ID}] DST Validation Results: ${warnings.length} warnings, ${errors.length} errors`,
+    );
+  }
+
+  return { warnings, errors };
+}
+
 // --- Notion Client Setup (reuse or adapt from notion-poster) ---
 // Ensure NOTION_API_KEY and NOTION_DATABASE_ID are loaded (e.g., via dotenv)
 import dotenv from "dotenv";
@@ -62,7 +217,10 @@ const RepeatingEventRuleSchema = z.object({
   time: z.string().regex(/^\d{2}:\d{2}$/, "Time must be in HH:MM format"), // HH:MM format
   rrule: z.string().min(1), // Basic validation, rrule library handles parsing
   iconEmoji: z.string().optional(), // Optional emoji for Notion icon
-  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "End date must be in YYYY-MM-DD format").optional(), // Optional end date for events
+  endDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "End date must be in YYYY-MM-DD format")
+    .optional(), // Optional end date for events
 });
 
 const RepeatingEventsConfigSchema = z.array(RepeatingEventRuleSchema);
@@ -78,11 +236,11 @@ type RepeatingEventRule = z.infer<typeof RepeatingEventRuleSchema>;
 async function queryNotionForExistingRepeatingEventIds(
   startDate: Date,
   endDate: Date,
-  knownRuleIds: Set<string>
+  knownRuleIds: Set<string>,
 ): Promise<Set<string>> {
   if (!databaseId) {
     throw new Error(
-      `[${SCRAPER_ID}] NOTION_DATABASE_ID environment variable is not set`
+      `[${SCRAPER_ID}] NOTION_DATABASE_ID environment variable is not set`,
     );
   }
 
@@ -112,12 +270,12 @@ async function queryNotionForExistingRepeatingEventIds(
   if (ruleIdFilters.length > 90) {
     // Conservative limit
     console.warn(
-      `[${SCRAPER_ID}] Warning: Approaching Notion OR filter limit with ${ruleIdFilters.length} rules. Query might fail or need batching in the future.`
+      `[${SCRAPER_ID}] Warning: Approaching Notion OR filter limit with ${ruleIdFilters.length} rules. Query might fail or need batching in the future.`,
     );
   }
 
   console.log(
-    `[${SCRAPER_ID}] Querying Notion for events between ${startDateStr} and ${endDateStr} matching ${knownRuleIds.size} ruleId prefixes...`
+    `[${SCRAPER_ID}] Querying Notion for events between ${startDateStr} and ${endDateStr} matching ${knownRuleIds.size} ruleId prefixes...`,
   );
 
   try {
@@ -188,19 +346,19 @@ async function queryNotionForExistingRepeatingEventIds(
     }
 
     console.log(
-      `[${SCRAPER_ID}] Found ${existingIds.size} existing event IDs in Notion matching criteria.`
+      `[${SCRAPER_ID}] Found ${existingIds.size} existing event IDs in Notion matching criteria.`,
     );
     return existingIds;
   } catch (error) {
     if (isNotionClientError(error)) {
       console.error(
-        `[${SCRAPER_ID}] Notion API Error querying existing events: ${error.code} - ${error.message}`
+        `[${SCRAPER_ID}] Notion API Error querying existing events: ${error.code} - ${error.message}`,
         // Removed error.body logging
       );
     } else {
       console.error(
         `[${SCRAPER_ID}] Error querying Notion for existing events:`,
-        error
+        error,
       );
     }
     // Decide on behavior: throw or return empty set?
@@ -211,14 +369,14 @@ async function queryNotionForExistingRepeatingEventIds(
 
 // --- Main Scraper Function ---
 const scrapeRepeatingEvents = async (
-  options: ScrapeOptions
+  options: ScrapeOptions,
 ): Promise<Event[]> => {
   console.log(`[${SCRAPER_ID}] Starting generation...`);
 
   // 0. Check Notion Env Vars
   if (!process.env.NOTION_API_KEY || !process.env.NOTION_DATABASE_ID) {
     console.error(
-      `[${SCRAPER_ID}] Error: NOTION_API_KEY or NOTION_DATABASE_ID missing from environment.`
+      `[${SCRAPER_ID}] Error: NOTION_API_KEY or NOTION_DATABASE_ID missing from environment.`,
     );
     // Optionally, load dotenv here if not loaded globally
     // dotenv.config();
@@ -232,13 +390,13 @@ const scrapeRepeatingEvents = async (
   const now = new Date();
   const generationStartDate = startOfDay(toDate(now, { timeZone: TIME_ZONE }));
   const generationEndDate = endOfDay(
-    add(generationStartDate, { weeks: GENERATION_WEEKS })
+    add(generationStartDate, { weeks: GENERATION_WEEKS }),
   );
 
   console.log(
     `[${SCRAPER_ID}] Generating events from ${formatDate(
-      generationStartDate
-    )} to ${formatDate(generationEndDate)} (inclusive)`
+      generationStartDate,
+    )} to ${formatDate(generationEndDate)} (inclusive)`,
   );
 
   try {
@@ -253,7 +411,7 @@ const scrapeRepeatingEvents = async (
     if (!validationResult.success) {
       console.error(
         `[${SCRAPER_ID}] Configuration validation failed:`,
-        validationResult.error.flatten()
+        validationResult.error.flatten(),
       );
       throw new Error("Invalid repeating-events.json configuration.");
     }
@@ -261,13 +419,42 @@ const scrapeRepeatingEvents = async (
     const rules: RepeatingEventRule[] = validationResult.data;
     console.log(`[${SCRAPER_ID}] Validated ${rules.length} rules.`);
 
+    // 2.5. DST Validation (helps identify potential timezone issues)
+    console.log(`[${SCRAPER_ID}] Running DST transition validation...`);
+    const dstValidation = validateDSTTransitions(rules, TIME_ZONE);
+    if (dstValidation.errors.length > 0) {
+      console.error(
+        `[${SCRAPER_ID}] DST validation found ${dstValidation.errors.length} critical timezone issues:`,
+      );
+      dstValidation.errors.forEach((error) => console.error(`  - ${error}`));
+      console.error(
+        `[${SCRAPER_ID}] These issues may cause events to appear on wrong dates. Consider adjusting event times or RRULE configurations.`,
+      );
+    }
+    if (dstValidation.warnings.length > 0) {
+      console.warn(
+        `[${SCRAPER_ID}] DST validation warnings (${dstValidation.warnings.length}):`,
+      );
+      dstValidation.warnings.forEach((warning) =>
+        console.warn(`  - ${warning}`),
+      );
+    }
+    if (
+      dstValidation.errors.length === 0 &&
+      dstValidation.warnings.length === 0
+    ) {
+      console.log(
+        `[${SCRAPER_ID}] DST validation passed - no timezone issues detected.`,
+      );
+    }
+
     const knownRuleIds = new Set(rules.map((r) => r.ruleId));
 
     // 3. Query Notion for Existing Events
     const existingExternalIds = await queryNotionForExistingRepeatingEventIds(
       generationStartDate,
       generationEndDate,
-      knownRuleIds
+      knownRuleIds,
     );
     // console.log(`[${SCRAPER_ID}] Found ${existingExternalIds.size} potentially relevant existing events in Notion.`); // Logging moved inside query func
 
@@ -278,31 +465,30 @@ const scrapeRepeatingEvents = async (
       console.log(`[${SCRAPER_ID}] Processing rule: ${rule.ruleId}`);
       let rruleSet: InstanceType<typeof RRule>;
       let effectiveEndDate = generationEndDate;
-      
+
       // If rule has an endDate, use it to limit generation
       if (rule.endDate) {
-        const ruleEndDate = toDate(`${rule.endDate}T23:59:59`, { timeZone: TIME_ZONE });
-        effectiveEndDate = ruleEndDate < generationEndDate ? ruleEndDate : generationEndDate;
+        const ruleEndDate = toDate(`${rule.endDate}T23:59:59`, {
+          timeZone: TIME_ZONE,
+        });
+        effectiveEndDate =
+          ruleEndDate < generationEndDate ? ruleEndDate : generationEndDate;
       }
-      
+
       try {
-        // Ensure DTSTART is set correctly for rrule processing, respecting timezone
-        // DTSTART is important for rules like 'last Thursday of month'
-        // We use the generation start date as a sensible default DTSTART
-        const rruleOptions = RRule.parseString(rule.rrule);
-        rruleOptions.dtstart = generationStartDate; // Use generation start as DTSTART
-        rruleOptions.tzid = TIME_ZONE; // Set timezone
-        
-        // Add UNTIL parameter if endDate is specified
-        if (rule.endDate) {
-          rruleOptions.until = toDate(`${rule.endDate}T23:59:59`, { timeZone: TIME_ZONE });
-        }
+        // Use the enhanced DST-safe RRule builder
+        const rruleOptions = buildDSTSafeRRuleOptions(
+          rule.rrule,
+          generationStartDate,
+          TIME_ZONE,
+          rule.endDate,
+        );
 
         rruleSet = new RRule(rruleOptions);
       } catch (e) {
         console.error(
           `[${SCRAPER_ID}] Error parsing RRULE "${rule.rrule}" for ruleId "${rule.ruleId}":`,
-          e
+          e,
         );
         continue; // Skip this rule if RRULE is invalid
       }
@@ -310,39 +496,46 @@ const scrapeRepeatingEvents = async (
       const occurrences = rruleSet.between(
         generationStartDate,
         effectiveEndDate,
-        true // inc = inclusive
+        true, // inc = inclusive
       );
 
-      const endDateInfo = rule.endDate ? ` (ends ${rule.endDate})` : '';
+      const endDateInfo = rule.endDate ? ` (ends ${rule.endDate})` : "";
       console.log(
-        `[${SCRAPER_ID}]   Rule ${rule.ruleId}: Found ${occurrences.length} occurrences in window${endDateInfo}.`
+        `[${SCRAPER_ID}]   Rule ${rule.ruleId}: Found ${occurrences.length} occurrences in window${endDateInfo}.`,
       );
 
       for (const occurrenceDate of occurrences) {
-        // Combine date and time, respecting timezone
-        const [hour, minute] = rule.time.split(":").map(Number);
-        // Convert occurrence Date (which might be UTC from rrule.js) to target timezone DATE
+        // Get the intended occurrence date in target timezone
         const occurrenceDateStr = formatInTimeZone(
           occurrenceDate,
           TIME_ZONE,
-          "yyyy-MM-dd"
+          "yyyy-MM-dd",
         );
-        const startAtDateTime = toDate(`${occurrenceDateStr}T${rule.time}:00`, {
-          timeZone: TIME_ZONE,
-        });
 
-        const start_at = formatISO(startAtDateTime);
-        const eventDateStr = formatInTimeZone(
-          startAtDateTime,
+        // Use the DST-safe event datetime creator
+        const eventResult = createEventDateTime(
+          occurrenceDateStr,
+          rule.time,
           TIME_ZONE,
-          "yyyy-MM-dd"
         );
-        const external_id = `${rule.ruleId}-${eventDateStr}`;
+
+        // Validate that the event landed on the correct date
+        if (!eventResult.isValid) {
+          console.warn(
+            `[${SCRAPER_ID}]   WARNING: DST-related date shift detected for ${rule.ruleId}! ` +
+              `Expected ${occurrenceDateStr} but event landed on ${eventResult.actualDateStr}. ` +
+              `This may indicate a timezone handling issue. Skipping this occurrence.`,
+          );
+          continue;
+        }
+
+        const start_at = formatISO(eventResult.dateTime);
+        const external_id = `${rule.ruleId}-${eventResult.actualDateStr}`;
 
         // Check if already exists
         if (existingExternalIds.has(external_id)) {
           console.log(
-            `[${SCRAPER_ID}]   Skipping existing event: ${external_id}`
+            `[${SCRAPER_ID}]   Skipping existing event: ${external_id}`,
           );
           continue;
         }
@@ -350,7 +543,7 @@ const scrapeRepeatingEvents = async (
         // Calculate end_at if duration is provided
         let end_at: string | undefined = undefined;
         if (rule.duration) {
-          const endAtDateTime = add(startAtDateTime, rule.duration);
+          const endAtDateTime = add(eventResult.dateTime, rule.duration);
           end_at = formatISO(endAtDateTime);
         }
 
@@ -371,33 +564,33 @@ const scrapeRepeatingEvents = async (
 
         generatedEvents.push(event);
         console.log(
-          `[${SCRAPER_ID}]   Generated event: ${event.title} on ${eventDateStr} (ID: ${external_id})`
+          `[${SCRAPER_ID}]   Generated event: ${event.title} on ${eventResult.actualDateStr} (ID: ${external_id})`,
         );
       }
     }
 
     console.log(
-      `[${SCRAPER_ID}] Generated ${generatedEvents.length} new event instances.`
+      `[${SCRAPER_ID}] Generated ${generatedEvents.length} new event instances.`,
     );
 
     // 5. Final Validation (Optional but recommended)
     try {
       const finalValidation = EventsArraySchema.parse(generatedEvents);
       console.log(
-        `[${SCRAPER_ID}] Final event structure validation successful.`
+        `[${SCRAPER_ID}] Final event structure validation successful.`,
       );
       return finalValidation as Event[];
     } catch (validationError) {
       console.error(
         `[${SCRAPER_ID}] Zod validation failed for final generated event list:`,
-        validationError
+        validationError,
       );
       throw new Error(`[${SCRAPER_ID}] Final event validation failed.`);
     }
   } catch (error) {
     console.error(
       `[${SCRAPER_ID}] An error occurred during generation:`,
-      error
+      error,
     );
     return []; // Return empty array on error
   }

@@ -91,7 +91,8 @@
     "duration": {
       "hours": 7
     },
-    "iconEmoji": "👒"
+    "iconEmoji": "👒",
+    "endDate": "2025-12-01"
   },
   {
     "ruleId": "fareground-welcome-table",
@@ -238,17 +239,6 @@
     "iconEmoji": "🎤"
   },
   {
-    "ruleId": "industrial-arts-bring-your-own-vinyl",
-    "title": "Bring Your Own Vinyl Night",
-    "location": "Industrial Arts",
-    "time": "15:00",
-    "duration": {
-      "hours": 6
-    },
-    "rrule": "FREQ=WEEKLY;BYDAY=MO",
-    "iconEmoji": "🎵"
-  },
-  {
     "ruleId": "mutual-aid-beacon-food-distro-seniors",
     "title": "Mutual Aid Beacon Food Distribution for Seniors",
     "location": "Robert Cahill Drive",
@@ -304,11 +294,8 @@
     "title": "Karaoke Night",
     "location": "Quinn's",
     "time": "21:00",
-    "duration": {
-      "hours": 3
-    },
     "rrule": "FREQ=MONTHLY;BYDAY=TH;BYSETPOS=-1",
-    "iconEmoji": ""
+    "iconEmoji": "🎤"
   },
   {
     "ruleId": "quinns-trivia-night",
@@ -356,18 +343,5 @@
     },
     "rrule": "FREQ=MONTHLY;BYDAY=SU;BYSETPOS=-1",
     "iconEmoji": "🎱"
-  },
-  {
-    "ruleId": "valley-spirit-mindfullness-meditation",
-    "title": "Mindfulness Meditation",
-    "url": "https://www.marywelch.com/events",
-    "description": "If you're local to the Hudson Valley Area, looking for spiritual community and interested in either learning or deepening your meditation practice, join us! Cushions and mats are supplied at the studio; just bring yourself and comfortable clothes. Feel free to invite anyone else interested in cultivating a meditation practice!",
-    "location": "Valley Spirit",
-    "time": "18:30",
-    "duration": {
-      "minutes": 30
-    },
-    "rrule": "FREQ=WEEKLY;BYDAY=TU",
-    "iconEmoji": "🧘‍♀️"
   }
 ]
