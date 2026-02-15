@@ -14,6 +14,7 @@ import { scraper as savageWonderScraper } from "./savage-wonder.js";
 import { scraper as bauGalleryScraper } from "./bau-gallery.js";
 import { scraper as industrialArtsBrewingScraper } from "./industrial-arts-brewing.js";
 import { scraper as saintRitasMusicRoomScraper } from "./saint-ritas-music-room.js";
+import { scraper as thatCreativeSpaceScraper } from "./that-creative-space.js";
 
 /**
  * A list of all available scrapers.
@@ -33,6 +34,7 @@ export const scrapers: Scraper[] = [
   bauGalleryScraper,
   industrialArtsBrewingScraper,
   saintRitasMusicRoomScraper,
+  thatCreativeSpaceScraper,
 ];
 
 /**

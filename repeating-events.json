@@ -128,6 +128,17 @@
     "iconEmoji": "🎲"
   },
   {
+    "ruleId": "dennings-distillery-geeks-who-drink",
+    "title": "Geeks Who Drink Trivia",
+    "location": "Denning's Point Distillery",
+    "time": "15:00",
+    "duration": {
+      "hours": 2
+    },
+    "rrule": "FREQ=WEEKLY;BYDAY=SU",
+    "iconEmoji": "🍺"
+  },
+  {
     "ruleId": "happy-valley-dance-independent",
     "title": "Dance Independent",
     "description": "Monthly indie dance party 💃🏽 $10 | Queer-friendly | High energy | Good vibes only",
