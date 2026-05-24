@@ -31,4 +31,25 @@ export interface ScrapeOptions {
   endDate?: Date;
   /** Optional shared browser instance */
   browser?: puppeteer.Browser;
+  /** Whether to show verbose progress logs */
+  verbose?: boolean;
+}
+
+export interface PostResult {
+  created: number;
+  skipped: number;
+  failed: number;
+  errors: { eventTitle: string; message: string }[];
+}
+
+export interface ScraperRunResult {
+  scraperId: string;
+  scraperName: string;
+  status: "success" | "error";
+  eventsFound: number;
+  eventsCreated: number;
+  eventsSkipped: number;
+  eventsFailed: number;
+  durationMs: number;
+  error?: Error;
 }

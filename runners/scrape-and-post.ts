@@ -8,7 +8,7 @@ import {
 import { toDate, formatInTimeZone } from "date-fns-tz";
 import dotenv from "dotenv";
 import inquirer from "inquirer";
-import type { ScrapeOptions, Scraper } from "../types.js";
+import type { ScrapeOptions, Scraper, ScraperRunResult } from "../types.js";
 import type { Browser } from "puppeteer";
 
 import { findScraperById, scrapers } from "../scrapers/index.js";
@@ -20,6 +20,94 @@ dotenv.config();
 
 // Define the target timezone consistently
 const TIME_ZONE = "America/New_York";
+
+/**
+ * Prints a formatted digest table showing the results of all scraper runs
+ */
+function printDigest(results: ScraperRunResult[], isDryRun: boolean): void {
+  console.log("\n" + "=".repeat(60));
+  console.log("                    SCRAPER RUN DIGEST".padStart(50));
+  console.log("=".repeat(60));
+
+  // Header
+  const header = "Scraper".padEnd(26) + 
+    "Found".padStart(6) + 
+    "Created".padStart(8) + 
+    "Skipped".padStart(8) + 
+    "Failed".padStart(7) + 
+    "Status".padStart(11);
+  console.log(header);
+  console.log("-".repeat(60));
+
+  // Rows
+  for (const result of results) {
+    const name = result.scraperName.length > 25 
+      ? result.scraperName.substring(0, 22) + "..." 
+      : result.scraperName;
+    
+    const found = result.status === "error" ? "-" : result.eventsFound.toString();
+    const created = isDryRun || result.status === "error" 
+      ? "--" 
+      : result.eventsCreated.toString();
+    const skipped = isDryRun || result.status === "error" 
+      ? "--" 
+      : result.eventsSkipped.toString();
+    const failed = isDryRun || result.status === "error" 
+      ? "--" 
+      : result.eventsFailed.toString();
+    
+    const statusText = result.status === "error" 
+      ? `ERROR (${(result.durationMs / 1000).toFixed(1)}s)`
+      : `OK (${(result.durationMs / 1000).toFixed(1)}s)`;
+    
+    const row = name.padEnd(26) + 
+      found.padStart(6) + 
+      created.padStart(8) + 
+      skipped.padStart(8) + 
+      failed.padStart(7) + 
+      statusText.padStart(11);
+    console.log(row);
+
+    // Print error message if there was an error
+    if (result.status === "error" && result.error) {
+      const errorMsg = result.error.message || String(result.error);
+      const errorName = result.error.name || "Error";
+      console.log(`  -> ${errorName}: ${errorMsg}`);
+    }
+  }
+
+  // Totals
+  console.log("-".repeat(60));
+  const totalFound = results
+    .filter((r) => r.status === "success")
+    .reduce((sum, r) => sum + r.eventsFound, 0);
+  const totalCreated = isDryRun 
+    ? "--" 
+    : results
+        .filter((r) => r.status === "success")
+        .reduce((sum, r) => sum + r.eventsCreated, 0)
+        .toString();
+  const totalSkipped = isDryRun 
+    ? "--" 
+    : results
+        .filter((r) => r.status === "success")
+        .reduce((sum, r) => sum + r.eventsSkipped, 0)
+        .toString();
+  const totalFailed = isDryRun 
+    ? "--" 
+    : results
+        .filter((r) => r.status === "success")
+        .reduce((sum, r) => sum + r.eventsFailed, 0)
+        .toString();
+  
+  const totalRow = "TOTAL".padEnd(26) + 
+    totalFound.toString().padStart(6) + 
+    totalCreated.padStart(8) + 
+    totalSkipped.padStart(8) + 
+    totalFailed.padStart(7);
+  console.log(totalRow);
+  console.log("=".repeat(60) + "\n");
+}
 
 // --- Main Function ---
 async function main() {
@@ -57,6 +145,12 @@ async function main() {
     .option("all", {
       alias: "a",
       description: "Run all scrapers in sequence",
+      type: "boolean",
+      default: false,
+    })
+    .option("verbose", {
+      alias: "v",
+      description: "Show verbose progress logs during scraping",
       type: "boolean",
       default: false,
     })
@@ -229,32 +323,63 @@ async function main() {
       startDate, // Use the final determined startDate Date object
       endDate, // Use the final determined endDate Date object
       browser,
+      verbose: argv.verbose as boolean,
     };
 
-    // 3. Run the Scraper
-    let allEvents = [];
+    // 3. Run the Scrapers with per-scraper error isolation
+    const results: ScraperRunResult[] = [];
     for (const s of selectedScrapers) {
-      console.log(`▶️ Running scraper: ${s.name} (${s.id})`);
-      const events = await s.scrape(scrapeOptions);
-      console.log(`✅ ${s.name} returned ${events.length} events.`);
-      allEvents = allEvents.concat(events);
-    }
+      const startTime = Date.now();
+      const result: ScraperRunResult = {
+        scraperId: s.id,
+        scraperName: s.name,
+        status: "success",
+        eventsFound: 0,
+        eventsCreated: 0,
+        eventsSkipped: 0,
+        eventsFailed: 0,
+        durationMs: 0,
+      };
 
-    if (allEvents.length === 0) {
-      console.log("⏹️ No events found for the specified date range.");
-    } else {
-      console.log(`✅ Found ${allEvents.length} events.`);
+      try {
+        console.log(`▶️ Running scraper: ${s.name} (${s.id})`);
+        const events = await s.scrape(scrapeOptions);
+        result.eventsFound = events.length;
+        console.log(`✅ ${s.name} returned ${events.length} events.`);
 
-      if (argv.dryRun) {
-        console.log("\n🌵 Dry Run Mode: Events found but not posted:");
-        console.log(JSON.stringify(allEvents, null, 2));
-      } else {
-        console.log("📤 Posting events to Notion...");
-        await postEventsToNotion(allEvents);
+        if (events.length > 0) {
+          if (argv.dryRun) {
+            console.log(
+              `🌵 Dry Run Mode: ${events.length} events found but not posted for ${s.name}`
+            );
+          } else {
+            console.log(`📤 Posting ${events.length} events to Notion for ${s.name}...`);
+            const postResult = await postEventsToNotion(events);
+            result.eventsCreated = postResult.created;
+            result.eventsSkipped = postResult.skipped;
+            result.eventsFailed = postResult.failed;
+          }
+        }
+      } catch (error) {
+        result.status = "error";
+        result.error = error as Error;
+        console.error(`❌ Error running scraper ${s.name} (${s.id}):`, error);
+      } finally {
+        result.durationMs = Date.now() - startTime;
+        results.push(result);
       }
     }
 
-    console.log("✨ Process completed successfully!");
+    // 4. Print digest
+    printDigest(results, argv.dryRun);
+
+    // Determine overall success
+    const hasErrors = results.some((r) => r.status === "error");
+    if (hasErrors) {
+      process.exitCode = 1;
+    } else {
+      console.log("✨ Process completed successfully!");
+    }
   } catch (error) {
     console.error("❌ An error occurred during the scrape-and-post process:");
     console.error(error);

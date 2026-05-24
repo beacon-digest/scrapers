@@ -11,6 +11,7 @@ import { toDate } from "date-fns-tz";
 import { decode } from "html-entities";
 
 import type { Event, Scraper, ScrapeOptions } from "../types.js";
+import { logEventFound } from "../utils/logging.js";
 import { convertHtmlToMarkdown } from "../utils/markdown.js";
 import { EventsArraySchema } from "../utils/validation.js";
 import { formatDate } from "../utils/date.js";
@@ -267,7 +268,9 @@ async function scrapeBeaconGovernmentEvents(
     );
 
     // Navigate to events page
-    console.log(`[${SCRAPER_ID}] Navigating to ${EVENTS_URL}`);
+    if (options.verbose) {
+      console.log(`[${SCRAPER_ID}] Navigating to ${EVENTS_URL}`);
+    }
     await page.goto(EVENTS_URL, { waitUntil: "networkidle0", timeout: 60000 });
 
     // Check if there's a calendar or list view
@@ -668,6 +671,7 @@ async function scrapeBeaconGovernmentEvents(
         };
 
         events.push(event);
+        logEventFound(SCRAPER_ID, event);
       } catch (processingError) {
         console.error(
           `[${SCRAPER_ID}] Error processing event data for "${rawEvent.title}":`,

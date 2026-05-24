@@ -10,6 +10,7 @@ import {
 } from "date-fns";
 
 import type { Event, Scraper, ScrapeOptions } from "../types.js";
+import { logEventFound } from "../utils/logging.js";
 import { formatDate } from "../utils/date.js";
 import { convertHtmlToMarkdown } from "../utils/markdown.js";
 import { EventsArraySchema } from "../utils/validation.js";
@@ -123,7 +124,9 @@ const scrapeThatCreativeSpaceEvents = async (
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     );
 
-    console.log(`[${SCRAPER_ID}] Navigating to ${EVENTS_URL}...`);
+    if (options.verbose) {
+      console.log(`[${SCRAPER_ID}] Navigating to ${EVENTS_URL}...`);
+    }
     await page.goto(EVENTS_URL, { waitUntil: "networkidle0", timeout: 60000 });
 
     // Wait for event links to load
@@ -199,7 +202,9 @@ const scrapeThatCreativeSpaceEvents = async (
         // Navigate to event detail page to get full description
         let description = "";
         try {
-          console.log(`[${SCRAPER_ID}] Navigating to event page: ${link.href}`);
+          if (options.verbose) {
+            console.log(`[${SCRAPER_ID}] Navigating to event page: ${link.href}`);
+          }
           await page.goto(link.href, { waitUntil: "networkidle0", timeout: 30000 });
           
           // Wait for and click "Read more" button if it exists
@@ -404,9 +409,7 @@ const scrapeThatCreativeSpaceEvents = async (
         };
 
         allFoundEvents.push(eventData);
-        console.log(
-          `[${SCRAPER_ID}] Added event: ${title} on ${formatDateFn(eventDate, "yyyy-MM-dd")}`
-        );
+        logEventFound(SCRAPER_ID, eventData);
       } catch (eventError) {
         console.error(`[${SCRAPER_ID}] Error processing event link:`, eventError);
       }

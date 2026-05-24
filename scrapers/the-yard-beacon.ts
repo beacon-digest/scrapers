@@ -12,6 +12,7 @@ import { toDate, formatInTimeZone } from "date-fns-tz";
 import { decode } from "html-entities";
 
 import type { Event, Scraper, ScrapeOptions } from "../types.js";
+import { logEventFound } from "../utils/logging.js";
 import { convertHtmlToMarkdown } from "../utils/markdown.js";
 import { EventsArraySchema } from "../utils/validation.js";
 import { formatDate } from "../utils/date.js"; // For logging
@@ -124,7 +125,9 @@ const scrapeTheYardEvents = async (
       startDate,
     )} to ${formatDate(endDate)}...`,
   );
-  console.log(`[${SCRAPER_ID}] Navigating to ${EVENTS_URL}...`);
+  if (options.verbose) {
+    console.log(`[${SCRAPER_ID}] Navigating to ${EVENTS_URL}...`);
+  }
 
   try {
     page = await browser.newPage();
@@ -460,6 +463,7 @@ const scrapeTheYardEvents = async (
           external_id: external_id,
         };
         allEvents.push(event);
+        logEventFound(SCRAPER_ID, event);
       } catch (processingError) {
         console.error(
           `[${SCRAPER_ID}] Error processing event data for "${rawEvent.title}":`,

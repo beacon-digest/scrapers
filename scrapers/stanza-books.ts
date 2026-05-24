@@ -17,6 +17,7 @@ import type { Event, Scraper, ScrapeOptions } from "../types.js";
 import { formatDate } from "../utils/date.js"; // For logging/errors
 import { convertHtmlToMarkdown } from "../utils/markdown.js";
 import { EventsArraySchema } from "../utils/validation.js";
+import { logEventFound } from "../utils/logging.js";
 
 const SCRAPER_ID = "stanza-books";
 const BASE_URL = "https://www.stanzabooks.com";
@@ -101,7 +102,9 @@ const scrapeStanzaBooksEvents = async (
     await page.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     );
-    console.log(`[${SCRAPER_ID}] Navigating to ${EVENTS_URL}...`);
+    if (options.verbose) {
+      console.log(`[${SCRAPER_ID}] Navigating to ${EVENTS_URL}...`);
+    }
     await page.goto(EVENTS_URL, { waitUntil: "networkidle0", timeout: 60000 });
 
     // --- Calendar Navigation Logic ---
@@ -134,12 +137,14 @@ const scrapeStanzaBooksEvents = async (
     if (!currentCalendarDate) {
       throw new Error("Could not determine initial calendar month.");
     }
-    console.log(
-      `[${SCRAPER_ID}] Initial calendar month detected: ${formatDateFn(
-        currentCalendarDate,
-        "yyyy-MM"
-      )}`
-    );
+    if (options.verbose) {
+      console.log(
+        `[${SCRAPER_ID}] Initial calendar month detected: ${formatDateFn(
+          currentCalendarDate,
+          "yyyy-MM"
+        )}`
+      );
+    }
 
     // Navigate to the target start month if necessary
     // Selectors for prev/next buttons using aria-label
@@ -147,9 +152,11 @@ const scrapeStanzaBooksEvents = async (
     const nextButtonSelector = 'a[aria-label="Go to next month"]';
 
     while (isBefore(currentCalendarDate, targetStartMonth)) {
-      console.log(
-        `[${SCRAPER_ID}] Navigating forward to target start month...`
-      );
+      if (options.verbose) {
+        console.log(
+          `[${SCRAPER_ID}] Navigating forward to target start month...`
+        );
+      }
       await page.click(nextButtonSelector);
       // Wait for title update (or other indicator)
       await page.waitForFunction(
@@ -165,9 +172,11 @@ const scrapeStanzaBooksEvents = async (
         (await getCurrentCalendarMonthYear(page)) || currentCalendarDate; // Update or keep old on error
     }
     while (isBefore(targetStartMonth, currentCalendarDate)) {
-      console.log(
-        `[${SCRAPER_ID}] Navigating backward to target start month...`
-      );
+      if (options.verbose) {
+        console.log(
+          `[${SCRAPER_ID}] Navigating backward to target start month...`
+        );
+      }
       await page.click(prevButtonSelector);
       await page.waitForFunction(
         (selector, expectedMonthYear) => {
@@ -182,12 +191,14 @@ const scrapeStanzaBooksEvents = async (
         (await getCurrentCalendarMonthYear(page)) || currentCalendarDate;
     }
 
-    console.log(
-      `[${SCRAPER_ID}] Reached target start month: ${formatDateFn(
-        currentCalendarDate,
-        "yyyy-MM"
-      )}`
-    );
+    if (options.verbose) {
+      console.log(
+        `[${SCRAPER_ID}] Reached target start month: ${formatDateFn(
+          currentCalendarDate,
+          "yyyy-MM"
+        )}`
+      );
+    }
 
     // Loop through months in range, scraping links
     while (
@@ -196,9 +207,11 @@ const scrapeStanzaBooksEvents = async (
         isBefore(currentCalendarDate, targetEndMonth))
     ) {
       const currentMonthStr = formatDateFn(currentCalendarDate, "yyyy-MM");
-      console.log(
-        `[${SCRAPER_ID}] Scraping links for month: ${currentMonthStr}`
-      );
+      if (options.verbose) {
+        console.log(
+          `[${SCRAPER_ID}] Scraping links for month: ${currentMonthStr}`
+        );
+      }
 
       const pathsThisMonth = await page.$$eval(
         '.sqs-block-calendar a[href^="/events/"]',
@@ -214,17 +227,21 @@ const scrapeStanzaBooksEvents = async (
       for (const path of pathsThisMonth) {
         uniqueEventPaths.add(path);
       }
-      console.log(
-        `[${SCRAPER_ID}] Found ${pathsThisMonth.length} links (${uniqueEventPaths.size} total unique).`
-      );
+      if (options.verbose) {
+        console.log(
+          `[${SCRAPER_ID}] Found ${pathsThisMonth.length} links (${uniqueEventPaths.size} total unique).`
+        );
+      }
 
       // Navigate to next month if needed
       if (isBefore(currentCalendarDate, targetEndMonth)) {
         const nextMonthDate: Date = addMonths(currentCalendarDate, 1);
         const nextMonthStr = formatDateFn(nextMonthDate, "MMMM yyyy");
-        console.log(
-          `[${SCRAPER_ID}] Clicking next month to reach ${nextMonthStr}...`
-        );
+        if (options.verbose) {
+          console.log(
+            `[${SCRAPER_ID}] Clicking next month to reach ${nextMonthStr}...`
+          );
+        }
         await page.click(nextButtonSelector);
         await page.waitForFunction(
           (selector, expectedMonthYear) => {
@@ -243,9 +260,11 @@ const scrapeStanzaBooksEvents = async (
     // --- End Calendar Navigation ---
 
     const eventPaths = Array.from(uniqueEventPaths);
-    console.log(
-      `[${SCRAPER_ID}] Total unique event paths extracted: ${eventPaths.length}`
-    );
+    if (options.verbose) {
+      console.log(
+        `[${SCRAPER_ID}] Total unique event paths extracted: ${eventPaths.length}`
+      );
+    }
 
     // --- Visit Each Event Page and Extract Details ---
     for (const eventPath of eventPaths) {
@@ -259,9 +278,6 @@ const scrapeStanzaBooksEvents = async (
         }
 
         const eventUrl = `${BASE_URL}${eventPath}`;
-        console.log(
-          `[${SCRAPER_ID}] Navigating to event detail page: ${eventUrl}`
-        );
         await page.goto(eventUrl, {
           waitUntil: "networkidle0",
           timeout: 60000,
@@ -345,15 +361,6 @@ const scrapeStanzaBooksEvents = async (
         } else if (descriptionHtml?.includes("Howland Cultural Center")) {
           location = "Howland Cultural Center";
         }
-        // Log final location before constructing event object
-        console.log(
-          `[${SCRAPER_ID}] Final location for "${title}": "${location}"`
-        );
-
-        // Log the path and constructed URL before creating the object
-        console.log(
-          `[${SCRAPER_ID}] Path: ${eventPath}, Constructed URL: ${eventUrl}`
-        );
 
         // Construct the event object
         const eventData: Event = {
@@ -383,6 +390,7 @@ const scrapeStanzaBooksEvents = async (
         };
 
         allFoundEvents.push(eventData); // Add event before date filtering
+        logEventFound(SCRAPER_ID, eventData);
       } catch (detailError) {
         console.error(
           `[${SCRAPER_ID}] Error processing event page ${eventPath}:`,

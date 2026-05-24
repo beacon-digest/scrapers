@@ -12,7 +12,7 @@ import type {
   BlockObjectRequest,
   CreatePageParameters,
 } from "@notionhq/client/build/src/api-endpoints";
-import type { Event, NotionIcon } from "../types.js";
+import type { Event, NotionIcon, PostResult } from "../types.js";
 import dotenv from "dotenv";
 import { markdownToBlocks } from "@tryfabric/martian";
 import { formatInTimeZone } from "date-fns-tz";
@@ -222,9 +222,9 @@ function sanitizeMarkdownLinks(markdown: string, baseUrl: string): string {
 /**
  * Posts multiple events to a Notion database.
  * @param events Array of events to post to Notion
- * @returns Array of created page IDs
+ * @returns PostResult with counts of created, skipped, failed events and error details
  */
-export async function postEventsToNotion(events: Event[]): Promise<string[]> {
+export async function postEventsToNotion(events: Event[]): Promise<PostResult> {
   if (!databaseId) {
     throw new Error("NOTION_DATABASE_ID environment variable is not set");
   }
@@ -391,5 +391,14 @@ export async function postEventsToNotion(events: Event[]): Promise<string[]> {
   console.log(
     `Successfully posted ${results.length} of ${events.length} events to Notion (${skipped.length} skipped, ${errors.length} failed)`
   );
-  return results;
+  
+  return {
+    created: results.length,
+    skipped: skipped.length,
+    failed: errors.length,
+    errors: errors.map((e) => ({
+      eventTitle: e.eventTitle,
+      message: e.error.message,
+    })),
+  };
 }

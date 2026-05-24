@@ -12,6 +12,7 @@ import { toDate } from "date-fns-tz";
 import { decode } from "html-entities";
 
 import type { Event, Scraper, ScrapeOptions } from "../types.js";
+import { logEventFound } from "../utils/logging.js";
 import { formatDate } from "../utils/date.js";
 import { convertHtmlToMarkdown } from "../utils/markdown.js";
 import { EventsArraySchema } from "../utils/validation.js";
@@ -133,7 +134,9 @@ async function scrapeSaintRitasMusicRoomEvents(
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     );
 
-    console.log(`[${SCRAPER_ID}] Navigating to ${EVENTS_URL}`);
+    if (options.verbose) {
+      console.log(`[${SCRAPER_ID}] Navigating to ${EVENTS_URL}`);
+    }
     await page.goto(EVENTS_URL, {
       waitUntil: "networkidle0",
       timeout: 60000,
@@ -281,6 +284,7 @@ async function scrapeSaintRitasMusicRoomEvents(
         };
 
         events.push(event);
+        logEventFound(SCRAPER_ID, event);
       } catch (processingError) {
         console.error(
           `[${SCRAPER_ID}] Error processing event data for "${rawEvent.title}":`,

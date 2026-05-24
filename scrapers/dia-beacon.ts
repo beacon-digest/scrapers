@@ -4,6 +4,7 @@ import { decode } from "html-entities";
 import { toDate, formatInTimeZone } from "date-fns-tz";
 
 import type { Event, Scraper, ScrapeOptions } from "../types.js";
+import { logEventFound } from "../utils/logging.js";
 import { convertHtmlToMarkdown } from "../utils/markdown.js";
 import { EventsArraySchema } from "../utils/validation.js";
 import { formatDate } from "../utils/date.js"; // For logging
@@ -211,7 +212,9 @@ const scrapeDiaBeaconEvents = async (
       startDate
     )} to ${formatDate(endDate || startDate)}...`
   );
-  console.log(`[${SCRAPER_ID}] Navigating to calendar page: ${calendarUrl}`);
+  if (options.verbose) {
+    console.log(`[${SCRAPER_ID}] Navigating to calendar page: ${calendarUrl}`);
+  }
 
   try {
     page = await browser.newPage();
@@ -569,6 +572,7 @@ const scrapeDiaBeaconEvents = async (
         };
 
         allEvents.push(event);
+        logEventFound(SCRAPER_ID, event);
       } catch (processingError) {
         console.error(
           `[${SCRAPER_ID}] Error processing event data for "${rawEvent.rawTitle}":`,

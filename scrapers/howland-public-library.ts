@@ -7,6 +7,7 @@ import type { Event, Scraper, ScrapeOptions } from "../types.js";
 import { getDatesInRange, formatDate } from "../utils/date.js";
 import { convertHtmlToMarkdown } from "../utils/markdown.js";
 import { EventsArraySchema } from "../utils/validation.js";
+import { logEventFound } from "../utils/logging.js";
 // Note: We assume the runner will provide the browser instance via options.
 // If this scraper were to be run standalone, it would need utils/browser.js
 // import { getBrowserInstance, closeBrowserInstance } from "../utils/browser.js";
@@ -49,10 +50,12 @@ const scrapeHowlandLibraryEvents = async (
       const calendarUrl = `${BASE_URL}/${formattedMonthUrl}`;
       const targetDateString = formatDate(targetDate); // YYYY-MM-DD
 
-      console.log(`[${SCRAPER_ID}] Processing date: ${targetDateString}`);
-      console.log(
-        `[${SCRAPER_ID}] Navigating to calendar month: ${calendarUrl}`,
-      );
+      if (options.verbose) {
+        console.log(`[${SCRAPER_ID}] Processing date: ${targetDateString}`);
+        console.log(
+          `[${SCRAPER_ID}] Navigating to calendar month: ${calendarUrl}`,
+        );
+      }
 
       try {
         await page.goto(calendarUrl, {
@@ -65,13 +68,15 @@ const scrapeHowlandLibraryEvents = async (
           timeout: 60000,
         });
 
-        console.log(
-          `[${SCRAPER_ID}] Calendar month loaded, extracting events for ${targetDateString}...`,
-        );
+        if (options.verbose) {
+          console.log(
+            `[${SCRAPER_ID}] Calendar month loaded, extracting events for ${targetDateString}...`,
+          );
+        }
 
         // Extract JSON-LD scripts for the target date
         const eventsForDate = await page.evaluate(
-          (dateStr, scraperId, locationName) => {
+          (dateStr, scraperId, locationName, debugEndpoint) => {
             const scripts = Array.from(
               document.querySelectorAll("script[type='application/ld+json']"),
             );
@@ -80,6 +85,11 @@ const scrapeHowlandLibraryEvents = async (
             for (const script of scripts) {
               try {
                 const data = JSON.parse(script.textContent || "");
+                // #region agent log
+                if (data["@type"] === "Event") {
+                  fetch(debugEndpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'howland-public-library.ts:JSON-LD',message:'JSON-LD Event found',data:{name:data.name,startDate:data.startDate,url:data.url,targetDateStr:dateStr,matches:data.startDate===dateStr},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
+                }
+                // #endregion
                 // Ensure data.startDate matches the specific target date string (YYYY-MM-DD)
                 if (data["@type"] === "Event" && data.startDate === dateStr) {
                   // Extract original external_id from URL
@@ -113,19 +123,19 @@ const scrapeHowlandLibraryEvents = async (
           targetDateString,
           SCRAPER_ID,
           LOCATION_NAME,
+          'http://127.0.0.1:7244/ingest/c1562f93-2e06-49b7-a1cb-ab2d17355181',
         );
 
-        console.log(
-          `[${SCRAPER_ID}] Found ${eventsForDate.length} potential events on ${targetDateString}. Fetching details...`,
-        );
+        if (options.verbose) {
+          console.log(
+            `[${SCRAPER_ID}] Found ${eventsForDate.length} potential events on ${targetDateString}. Fetching details...`,
+          );
+        }
 
         // Get full details for each event found
         for (const event of eventsForDate) {
           if (event.url) {
             try {
-              console.log(
-                `[${SCRAPER_ID}] Navigating to event page: ${event.url}`,
-              );
               await page.goto(event.url, {
                 waitUntil: "networkidle0",
                 timeout: 60000,
@@ -157,11 +167,6 @@ const scrapeHowlandLibraryEvents = async (
                 }
               }
 
-              // For debugging
-              console.log(`[${SCRAPER_ID}] Event URL: ${event.url}`);
-              console.log(`[${SCRAPER_ID}] Event Title: ${event.title}`);
-              console.log(`[${SCRAPER_ID}] Raw header text: "${headerText}"`);
-
               let eventDate = targetDateString; // Default to the target date
 
               // Updated regex to handle cases where date and time run together
@@ -169,6 +174,9 @@ const scrapeHowlandLibraryEvents = async (
               // We want to capture day (1-2 digits) and separate it from any time that follows
               // Use a more restrictive approach: capture the longest sequence of digits after month
               // Then validate and correct if it includes time digits
+              // #region agent log
+              fetch('http://127.0.0.1:7244/ingest/c1562f93-2e06-49b7-a1cb-ab2d17355181',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'howland-public-library.ts:headerText',message:'Header text extracted',data:{headerText,eventUrl:event.url},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+              // #endregion
               const headerDateMatch = headerText.match(
                 /([A-Za-z]+),\s+([A-Za-z]+)\s+(\d+)/,
               );
@@ -177,9 +185,6 @@ const scrapeHowlandLibraryEvents = async (
               let correctedDay = null;
               if (headerDateMatch) {
                 const potentialDay = headerDateMatch[3];
-                console.log(
-                  `[${SCRAPER_ID}] Potential day captured: "${potentialDay}"`,
-                );
 
                 // Check if this looks like day+time (e.g., "310" from "310:00")
                 // Look for pattern where captured digits are followed by ":XX"
@@ -191,10 +196,6 @@ const scrapeHowlandLibraryEvents = async (
 
                 if (afterDayMatch && afterDayMatch[3]) {
                   // We captured day+time digits, need to separate them
-                  console.log(
-                    `[${SCRAPER_ID}] Detected day+time pattern: "${potentialDay}${afterDayMatch[3]}"`,
-                  );
-
                   // Try different splits: double digit day first, then single digit day
                   for (let dayLength = 2; dayLength >= 1; dayLength--) {
                     if (potentialDay.length > dayLength) {
@@ -210,9 +211,6 @@ const scrapeHowlandLibraryEvents = async (
                         parseInt(remainingDigits) <= 23
                       ) {
                         correctedDay = testDay;
-                        console.log(
-                          `[${SCRAPER_ID}] Corrected day from "${potentialDay}" to "${correctedDay}" (remaining: "${remainingDigits}")`,
-                        );
                         break;
                       }
                     }
@@ -225,28 +223,21 @@ const scrapeHowlandLibraryEvents = async (
                   correctedDay = potentialDay;
                 }
               }
+              // #region agent log
+              fetch('http://127.0.0.1:7244/ingest/c1562f93-2e06-49b7-a1cb-ab2d17355181',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'howland-public-library.ts:correctedDay',message:'Day correction result',data:{headerDateMatch:headerDateMatch?{full:headerDateMatch[0],dayOfWeek:headerDateMatch[1],month:headerDateMatch[2],potentialDay:headerDateMatch[3]}:null,correctedDay,eventUrl:event.url},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+              // #endregion
               if (headerDateMatch && correctedDay) {
                 const [, , month] = headerDateMatch;
                 const day = correctedDay;
                 const year = targetDate.getFullYear(); // Use year from targetDate
                 const monthNumber = getMonthNumber(month);
-                console.log(
-                  `[${SCRAPER_ID}] Parsed header date: month=${month}, day=${day}, year=${year}, monthNumber=${monthNumber}`,
-                );
                 if (monthNumber) {
                   eventDate = `${year}-${monthNumber}-${day.padStart(2, "0")}`;
-                  console.log(
-                    `[${SCRAPER_ID}] Constructed eventDate: ${eventDate}`,
-                  );
                 } else {
                   console.warn(
                     `[${SCRAPER_ID}] Could not get month number for: ${month}`,
                   );
                 }
-              } else {
-                console.log(
-                  `[${SCRAPER_ID}] No valid header date match found in: "${headerText}"`,
-                );
               }
 
               let timeText = "";
@@ -258,8 +249,6 @@ const scrapeHowlandLibraryEvents = async (
                 );
               } catch {
                 // If span.event-time doesn't exist, try to extract time from the header text directly
-                console.log(`[${SCRAPER_ID}] Header text: "${headerText}"`);
-
                 // Look for cases where time format is "X:XX—X:XX AM/PM" with period at the end
                 // This handles patterns like "4:00—4:30 PM", "9:00—9:30 AM", etc.
                 const timeRangeMatch = headerText.match(
@@ -271,9 +260,6 @@ const scrapeHowlandLibraryEvents = async (
                     timeRangeMatch;
                   // Add period to both times to ensure they're both treated the same
                   timeText = `${startHour}:${startMin} ${period}—${endHour}:${endMin} ${period}`;
-                  console.log(
-                    `[${SCRAPER_ID}] Extracted time range with single period: "${timeText}"`,
-                  );
                 } else {
                   // Look for fully specified time ranges "X:XX AM/PM—X:XX AM/PM"
                   const fullTimeRangeMatch = headerText.match(
@@ -282,9 +268,6 @@ const scrapeHowlandLibraryEvents = async (
 
                   if (fullTimeRangeMatch) {
                     timeText = fullTimeRangeMatch[0];
-                    console.log(
-                      `[${SCRAPER_ID}] Extracted fully specified time range: "${timeText}"`,
-                    );
                   } else {
                     // Last resort - just find any time-like pattern
                     const basicTimeMatch = headerText.match(
@@ -293,9 +276,6 @@ const scrapeHowlandLibraryEvents = async (
 
                     if (basicTimeMatch) {
                       timeText = basicTimeMatch[0];
-                      console.log(
-                        `[${SCRAPER_ID}] Extracted basic time from header: "${timeText}"`,
-                      );
                     } else {
                       console.warn(
                         `[${SCRAPER_ID}] Could not find time information on ${event.url}`,
@@ -305,28 +285,21 @@ const scrapeHowlandLibraryEvents = async (
                 }
               }
 
-              console.log(`[${SCRAPER_ID}] Parsing time text: "${timeText}"`);
+              // #region agent log
+              fetch('http://127.0.0.1:7244/ingest/c1562f93-2e06-49b7-a1cb-ab2d17355181',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'howland-public-library.ts:timeText',message:'Time text and eventDate before parse',data:{timeText,eventDate,eventUrl:event.url},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+              // #endregion
               const { startTime, endTime } = parseTimeText(timeText);
-              console.log(
-                `[${SCRAPER_ID}] Parsed times: start=${startTime}, end=${endTime}`,
-              );
 
+              // #region agent log
+              fetch('http://127.0.0.1:7244/ingest/c1562f93-2e06-49b7-a1cb-ab2d17355181',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'howland-public-library.ts:parsedTimes',message:'Parsed start/end times',data:{startTime,endTime,eventDate,eventUrl:event.url},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+              // #endregion
               if (startTime) {
                 const dateTimeString = `${eventDate}T${startTime}`;
-                console.log(
-                  `[${SCRAPER_ID}] Constructing start datetime: "${dateTimeString}" in timezone: ${TIME_ZONE}`,
-                );
                 try {
                   const startDate = toDate(dateTimeString, {
                     timeZone: TIME_ZONE,
                   });
-                  console.log(
-                    `[${SCRAPER_ID}] Created start Date object: ${startDate}`,
-                  );
                   event.start_at = startDate.toISOString();
-                  console.log(
-                    `[${SCRAPER_ID}] Start ISO string: ${event.start_at}`,
-                  );
                 } catch (error) {
                   console.error(
                     `[${SCRAPER_ID}] Error creating start date from "${dateTimeString}":`,
@@ -350,20 +323,11 @@ const scrapeHowlandLibraryEvents = async (
 
               if (endTime) {
                 const endDateTimeString = `${eventDate}T${endTime}`;
-                console.log(
-                  `[${SCRAPER_ID}] Constructing end datetime: "${endDateTimeString}" in timezone: ${TIME_ZONE}`,
-                );
                 try {
                   const endDate = toDate(endDateTimeString, {
                     timeZone: TIME_ZONE,
                   });
-                  console.log(
-                    `[${SCRAPER_ID}] Created end Date object: ${endDate}`,
-                  );
                   event.end_at = endDate.toISOString();
-                  console.log(
-                    `[${SCRAPER_ID}] End ISO string: ${event.end_at}`,
-                  );
                 } catch (error) {
                   console.error(
                     `[${SCRAPER_ID}] Error creating end date from "${endDateTimeString}":`,
@@ -391,7 +355,9 @@ const scrapeHowlandLibraryEvents = async (
               }
 
               // Add the fully processed event
-              allEvents.push(event as Event); // Cast to Event after processing
+              const processedEvent = event as Event;
+              allEvents.push(processedEvent);
+              logEventFound(SCRAPER_ID, processedEvent);
             } catch (detailError) {
               console.error(
                 `[${SCRAPER_ID}] Error fetching details for event ${event.title} (${event.url}):`,
@@ -484,7 +450,6 @@ function parseTimeText(timeText: string): {
   if (!timeText) return {};
 
   // Tries different regex patterns to match common time formats
-  console.log(`[${SCRAPER_ID}] Parsing time text: "${timeText}"`);
 
   // Format: "10:00 AM—1:00 PM" (handles different separators: —, -, to)
   let match = timeText.match(
@@ -493,9 +458,6 @@ function parseTimeText(timeText: string): {
   if (match) {
     const [, startHour, startMin, startPeriod, endHour, endMin, endPeriod] =
       match;
-    console.log(
-      `[${SCRAPER_ID}] Matched full format time range with separate periods`,
-    );
     return {
       startTime: convert12to24(startHour, startMin, startPeriod),
       endTime: convert12to24(endHour, endMin, endPeriod),
@@ -510,9 +472,6 @@ function parseTimeText(timeText: string): {
   if (match) {
     const [, startHour, startMin, startPeriod, endHour, endMin, endPeriod] =
       match;
-    console.log(
-      `[${SCRAPER_ID}] Matched reformatted time with repeated periods`,
-    );
     return {
       startTime: convert12to24(startHour, startMin, startPeriod),
       endTime: convert12to24(endHour, endMin, endPeriod),
@@ -534,40 +493,21 @@ function parseTimeText(timeText: string): {
     // 2. If start < end and both < 12, they're likely in same period
     let isStartPM = isEndPM;
 
-    console.log(
-      `[${SCRAPER_ID}] Time inference: startH=${startH}, endH=${endH}, period=${period}`,
-    );
-
     if (startH === endH) {
       // Same hour like "4:00-4:30 PM" - must be same period
       isStartPM = isEndPM;
-      console.log(
-        `[${SCRAPER_ID}] Same hour case: both ${isStartPM ? "PM" : "AM"}`,
-      );
     } else if (startH < endH && startH < 12 && endH < 12) {
       // Sequential hours both before noon like "9:00-11:30 AM" - likely same period
       isStartPM = isEndPM;
-      console.log(
-        `[${SCRAPER_ID}] Sequential hours < 12: both ${isStartPM ? "PM" : "AM"}`,
-      );
     } else if (startH === 12) {
       // 12 is special case (noon or midnight)
       isStartPM = isEndPM;
-      console.log(
-        `[${SCRAPER_ID}] 12 o'clock case: both ${isStartPM ? "PM" : "AM"}`,
-      );
     } else if (startH < 12 && startH > endH && isEndPM) {
       // Like "10:00-1:30 PM" - start is AM, end is PM
       isStartPM = false;
-      console.log(
-        `[${SCRAPER_ID}] Start < 12 & start > end & end is PM: start=AM, end=PM`,
-      );
     } else {
       // Default to same period for other cases
       isStartPM = isEndPM;
-      console.log(
-        `[${SCRAPER_ID}] Default case: both ${isStartPM ? "PM" : "AM"}`,
-      );
     }
 
     return {
@@ -591,52 +531,36 @@ function parseTimeText(timeText: string): {
       endPeriod,
     ] = match;
 
-    console.log(
-      `[${SCRAPER_ID}] Matched hour-only format: ${startHour}${startMin ? ":" + startMin : ""}${startPeriod ? " " + startPeriod : ""}-${endHour}${endMin ? ":" + endMin : ""} ${endPeriod}`,
-    );
-
     // If startPeriod is missing, infer from endPeriod based on hours
     if (!startPeriod) {
       const startH = Number.parseInt(startHour, 10);
       const endH = Number.parseInt(endHour, 10);
       const isEndPM = endPeriod.toUpperCase() === "PM";
 
-      console.log(
-        `[${SCRAPER_ID}] Time period inference: startH=${startH}, endH=${endH}, endPeriod=${endPeriod}`,
-      );
-
       // Improved period inference logic:
       // 1. If hours are the same (like "4-4:30 PM"), both must be same period
       if (startH === endH) {
         startPeriod = endPeriod;
-        console.log(`[${SCRAPER_ID}] Same hour: both ${endPeriod}`);
       }
       // 2. If hours are both small and sequential (like "9-10 AM"), likely same period
       else if (startH < endH && startH < 12 && endH < 12) {
         startPeriod = endPeriod;
-        console.log(`[${SCRAPER_ID}] Sequential hours < 12: both ${endPeriod}`);
       }
       // 3. Special case for noon
       else if (startH === 12) {
         startPeriod = endPeriod;
-        console.log(
-          `[${SCRAPER_ID}] 12 o'clock special case: both ${endPeriod}`,
-        );
       }
       // 4. Cases like "10-1 PM" where start hour is before noon but end is after
       else if (startH < 12 && startH > endH && isEndPM) {
         startPeriod = "AM";
-        console.log(`[${SCRAPER_ID}] Crossing noon case: start=AM, end=PM`);
       }
       // 5. Cases like "10-8 AM" - both must be AM (overnight would be specified differently)
       else if (startH >= endH && !isEndPM) {
         startPeriod = "AM";
-        console.log(`[${SCRAPER_ID}] Both morning hours: both AM`);
       }
       // Default - assume same period
       else {
         startPeriod = endPeriod;
-        console.log(`[${SCRAPER_ID}] Default case: both ${endPeriod}`);
       }
     }
 
@@ -675,9 +599,6 @@ function convert12to24(hour: string, min: string, period: string): string {
   if (!isPM && h === 12) h = 0; // 12 AM -> 00:00
 
   const result = `${h.toString().padStart(2, "0")}:${min.padStart(2, "0")}:00`;
-  console.log(
-    `[${SCRAPER_ID}] Converting ${hour}:${min} ${period} to ${result}`,
-  );
   return result;
 }
 

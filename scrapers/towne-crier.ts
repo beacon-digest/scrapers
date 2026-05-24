@@ -13,6 +13,7 @@ import { formatInTimeZone } from "date-fns-tz";
 import { EventsArraySchema } from "../utils/validation.js";
 import { formatDate } from "../utils/date.js"; // Assuming a helper like this exists
 import { convertHtmlToMarkdown } from "../utils/markdown.js";
+import { logEventFound } from "../utils/logging.js";
 
 // Define the timezone for Beacon, NY - Used for context, not direct date-fns-tz usage
 const TIMEZONE = "America/New_York";
@@ -134,7 +135,9 @@ async function scrapeTowneCrierStage(options: ScrapeOptions, stagePath: string, 
     }
     page = await browser.newPage();
     await page.goto(url, { waitUntil: "networkidle0", timeout: 60000 });
-    console.log(`[${scraperId}] Main page loaded. Extracting event list...`);
+    if (options.verbose) {
+      console.log(`[${scraperId}] Main page loaded. Extracting event list...`);
+    }
 
     const eventElementsData = await page.evaluate(
       (scraperId, locationName): RawEventData[] => {
@@ -305,6 +308,7 @@ async function scrapeTowneCrierStage(options: ScrapeOptions, stagePath: string, 
         external_id: rawEvent.external_id,
       };
       events.push(event);
+      logEventFound(scraperId, event);
     } // End for loop
 
     // Validate the final list of events against the schema

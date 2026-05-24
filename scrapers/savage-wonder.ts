@@ -4,6 +4,7 @@ import ical from "ical";
 import slugify from "slugify";
 
 import type { Event, ScrapeOptions, Scraper } from "../types.js";
+import { logEventFound } from "../utils/logging.js";
 import { EventsArraySchema } from "../utils/validation.js";
 
 const SCRAPER_ID = "savage-wonder";
@@ -109,6 +110,7 @@ const scrapeSavageWonderEvents = async (
       };
 
       allEvents.push(scrapedEvent);
+      logEventFound(SCRAPER_ID, scrapedEvent);
     }
 
     console.log(

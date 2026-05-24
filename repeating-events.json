@@ -343,16 +343,5 @@
     "time": "19:30",
     "rrule": "FREQ=WEEKLY;BYDAY=TH",
     "iconEmoji": "🗂️"
-  },
-  {
-    "ruleId": "two-way-brewing-bingo",
-    "title": "Bingo Night",
-    "location": "Two Way Brewing",
-    "time": "18:00",
-    "duration": {
-      "hours": 2
-    },
-    "rrule": "FREQ=MONTHLY;BYDAY=SU;BYSETPOS=-1",
-    "iconEmoji": "🎱"
   }
 ]

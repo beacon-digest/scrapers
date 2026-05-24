@@ -24,6 +24,7 @@ import { Client, isNotionClientError } from "@notionhq/client"; // Import Notion
 import type { Event, Scraper, ScrapeOptions } from "../types.js";
 import { EventsArraySchema } from "../utils/validation.js"; // Use this for final validation if needed
 import { formatDate } from "../utils/date.js"; // For logging
+import { logEventFound } from "../utils/logging.js";
 // Import Notion client/query functions when available
 // import { queryNotionForExistingIds, getNotionClient } from "../api/notion-helpers.js";
 
@@ -462,7 +463,9 @@ const scrapeRepeatingEvents = async (
     const generatedEvents: Event[] = [];
 
     for (const rule of rules) {
-      console.log(`[${SCRAPER_ID}] Processing rule: ${rule.ruleId}`);
+      if (options.verbose) {
+        console.log(`[${SCRAPER_ID}] Processing rule: ${rule.ruleId}`);
+      }
       let rruleSet: InstanceType<typeof RRule>;
       let effectiveEndDate = generationEndDate;
 
@@ -563,9 +566,7 @@ const scrapeRepeatingEvents = async (
         // console.log(`[Repeating Events DEBUG] Generated event object for ${external_id}:`, JSON.stringify(event, null, 2)); // REMOVE LOG
 
         generatedEvents.push(event);
-        console.log(
-          `[${SCRAPER_ID}]   Generated event: ${event.title} on ${eventResult.actualDateStr} (ID: ${external_id})`,
-        );
+        logEventFound(SCRAPER_ID, event);
       }
     }
 
