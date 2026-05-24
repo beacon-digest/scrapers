@@ -343,5 +343,30 @@
     "time": "19:30",
     "rrule": "FREQ=WEEKLY;BYDAY=TH",
     "iconEmoji": "🗂️"
+  },
+  {
+    "ruleId": "italo-disco-nite",
+    "title": "Italo Disco Nite",
+    "description": "A monthly evening of (mostly) '80s disco from Italy for dancing. Curated by Gustav Baller",
+    "location": "330 Main St",
+    "time": "20:00",
+    "duration": {
+      "hours": 5
+    },
+    "rrule": "FREQ=MONTHLY;BYDAY=SA;BYSETPOS=1",
+    "iconEmoji": "🪩"
+  },
+  {
+    "ruleId": "story-screen-movie-trivia",
+    "title": "Story Screen Movie Trivia",
+    "description": "You read correct, babies!! Our good pals over at Draught Industries are letting us take over the bar for yet another night of record-spinning, chin-scratching and general fun-having! Prizes! Su-prizes!! Other people who really like movies!! Ridiculously good beer and even more ridiculously good Mexican food! Show up early to make sure you can get a table, and don't forget those thinkin' caps. Free to play, 6 players max per team. This is a FREE EVENT!",
+    "location": "Draught Industries",
+    "url": "https://www.storyscreenpresents.com/special-screenings",
+    "time": "19:00",
+    "duration": {
+      "hours": 2
+    },
+    "rrule": "FREQ=MONTHLY;BYDAY=TU;BYSETPOS=-1",
+    "iconEmoji": "🎬"
   }
 ]
