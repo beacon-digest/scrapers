@@ -3,6 +3,12 @@
 	"version": "1.0.0",
 	"description": "Scrapers for community calendar events",
 	"main": "dist/scrapers/howland-public-library.js",
+	"pnpm": {
+		"supportedArchitectures": {
+			"os": ["darwin"],
+			"cpu": ["arm64", "x64"]
+		}
+	},
 	"type": "module",
 	"scripts": {
 		"build": "tsc",

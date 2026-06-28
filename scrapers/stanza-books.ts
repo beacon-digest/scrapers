@@ -133,6 +133,62 @@ const scrapeStanzaBooksEvents = async (
       }
     };
 
+    // Helper to read the unique event paths currently rendered in the calendar grid
+    const CALENDAR_LINK_SELECTOR = '.sqs-block-calendar a[href^="/events/"]';
+    const getCalendarPaths = async (page: Page): Promise<string[]> =>
+      page.$$eval(CALENDAR_LINK_SELECTOR, (links) => {
+        const uniqueHrefs = new Set(
+          links
+            .map((a) => a.getAttribute("href"))
+            .filter((href) => href !== null)
+        );
+        return Array.from(uniqueHrefs) as string[];
+      });
+
+    // Helper to navigate one month and wait for the grid to actually re-render.
+    // The header label (`.yui3-calendar-header-label`) updates synchronously when
+    // the prev/next button is clicked, but the calendar's event-link cells are
+    // re-rendered asynchronously: YUI first *clears* the grid (0 links) and then
+    // repopulates it. Waiting only on the header text — or only for the link set
+    // to differ from before — reads the transient empty state and yields zero
+    // events. So we poll until the grid has changed from the previous month AND
+    // settled (unchanged across several consecutive reads).
+    const navigateMonth = async (
+      page: Page,
+      buttonSelector: string,
+      expectedMonthYear: string
+    ): Promise<void> => {
+      const beforeSig = JSON.stringify((await getCalendarPaths(page)).sort());
+      await page.click(buttonSelector);
+      // 1) Wait for the header to show the target month.
+      await page.waitForFunction(
+        (selector, monthYear) =>
+          document.querySelector(selector)?.textContent?.includes(monthYear) ??
+          false,
+        { timeout: 10000 },
+        ".yui3-calendar-header-label",
+        expectedMonthYear
+      );
+      // 2) Wait for the event-link grid to settle on its final, repopulated state.
+      let lastSig = beforeSig;
+      let stableReads = 0;
+      let changed = false;
+      for (let i = 0; i < 40; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        const sig = JSON.stringify((await getCalendarPaths(page)).sort());
+        if (sig !== lastSig) {
+          changed = true;
+          stableReads = 0;
+          lastSig = sig;
+        } else {
+          stableReads += 1;
+        }
+        // Settled once we've moved off the previous month and the grid has been
+        // stable for ~3 consecutive reads (~450ms).
+        if (changed && sig !== beforeSig && stableReads >= 3) break;
+      }
+    };
+
     let currentCalendarDate = await getCurrentCalendarMonthYear(page);
     if (!currentCalendarDate) {
       throw new Error("Could not determine initial calendar month.");
@@ -157,15 +213,9 @@ const scrapeStanzaBooksEvents = async (
           `[${SCRAPER_ID}] Navigating forward to target start month...`
         );
       }
-      await page.click(nextButtonSelector);
-      // Wait for title update (or other indicator)
-      await page.waitForFunction(
-        (selector, expectedMonthYear) => {
-          const el = document.querySelector(selector);
-          return el?.textContent?.includes(expectedMonthYear);
-        },
-        { timeout: 10000 },
-        ".yui3-calendar-header-label", // Use updated title selector
+      await navigateMonth(
+        page,
+        nextButtonSelector,
         formatDateFn(addMonths(currentCalendarDate, 1), "MMMM yyyy")
       );
       currentCalendarDate =
@@ -177,14 +227,9 @@ const scrapeStanzaBooksEvents = async (
           `[${SCRAPER_ID}] Navigating backward to target start month...`
         );
       }
-      await page.click(prevButtonSelector);
-      await page.waitForFunction(
-        (selector, expectedMonthYear) => {
-          const el = document.querySelector(selector);
-          return el?.textContent?.includes(expectedMonthYear);
-        },
-        { timeout: 10000 },
-        ".yui3-calendar-header-label", // Use updated title selector
+      await navigateMonth(
+        page,
+        prevButtonSelector,
         formatDateFn(addMonths(currentCalendarDate, -1), "MMMM yyyy")
       );
       currentCalendarDate =
@@ -213,17 +258,7 @@ const scrapeStanzaBooksEvents = async (
         );
       }
 
-      const pathsThisMonth = await page.$$eval(
-        '.sqs-block-calendar a[href^="/events/"]',
-        (links) => {
-          const uniqueHrefs = new Set(
-            links
-              .map((a) => a.getAttribute("href"))
-              .filter((href) => href !== null)
-          );
-          return Array.from(uniqueHrefs) as string[];
-        }
-      );
+      const pathsThisMonth = await getCalendarPaths(page);
       for (const path of pathsThisMonth) {
         uniqueEventPaths.add(path);
       }
@@ -242,14 +277,9 @@ const scrapeStanzaBooksEvents = async (
             `[${SCRAPER_ID}] Clicking next month to reach ${nextMonthStr}...`
           );
         }
-        await page.click(nextButtonSelector);
-        await page.waitForFunction(
-          (selector, expectedMonthYear) => {
-            const el = document.querySelector(selector);
-            return el?.textContent?.includes(expectedMonthYear);
-          },
-          { timeout: 10000 },
-          ".yui3-calendar-header-label", // Use updated title selector
+        await navigateMonth(
+          page,
+          nextButtonSelector,
           formatDateFn(addMonths(currentCalendarDate, 1), "MMMM yyyy")
         );
         currentCalendarDate = nextMonthDate; // Assume success for loop condition
