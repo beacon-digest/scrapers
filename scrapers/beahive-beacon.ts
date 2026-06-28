@@ -1,95 +1,167 @@
+import { isWithinInterval } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+import slugify from "slugify";
+
 import type { Event, ScrapeOptions, Scraper } from "../types.js";
-import { parse } from "date-fns";
 import { convertHtmlToMarkdown } from "../utils/markdown.js";
+import { logEventFound } from "../utils/logging.js";
+import { EventsArraySchema } from "../utils/validation.js";
 
-export const scraper: Scraper = {
-  id: "beahive-beacon",
-  name: "Beahive Beacon",
-  async scrape(options: ScrapeOptions): Promise<Event[]> {
-    const { browser } = options;
-    if (!browser) {
-      throw new Error("A Puppeteer browser instance must be provided.");
-    }
-    const listingUrl = "https://beahivebeacon.spaces.nexudus.com/events";
-    const page = await browser.newPage();
-    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
-    await page.goto(listingUrl, { waitUntil: "networkidle0", timeout: 60000 });
+const SCRAPER_ID = "beahive-beacon";
+const LOCATION_NAME = "Beahive Beacon";
+const TIME_ZONE = "America/New_York";
 
-    const events: Event[] = await page.evaluate(() => {
-      const lis = Array.from(document.querySelectorAll("li"));
-      return lis.map(el => {
-        const titleElement = el.querySelector("a[href^='/events/']");
-        console.log({ titleElement });
-        if (!titleElement) return null;
-        const eventHref = titleElement.getAttribute("href");
-        if (!eventHref) return null;
-        const fullUrl = "https://beahivebeacon.spaces.nexudus.com" + eventHref;
-        const idMatch = eventHref.match(/^\/events\/(\d+)\/([\w-]+)/);
-        if (!idMatch) return null;
-        const external_id = `beahive-${idMatch[2]}-${idMatch[1]}`;
-        const liText = el.innerText;
-        if (!liText.includes("Beahive Beacon")) return null;
-        return {
-          title: "",
-          description: "",
-          location: "Beahive Beacon",
-          start_at: "",
-          url: fullUrl,
-          external_id,
-        };
-      }).filter(x => x !== null);
+// The public-facing site (used to build human-readable event URLs).
+const SITE_BASE = "https://beahivebeacon.nexudus.site/beahivebeacon";
+// The Nexudus public JSON API. `pastEvents=false` (and no `featured` flag)
+// returns the "Upcoming events" list rather than the homepage featured banner.
+const API_BASE = "https://beahivebeacon.spaces.nexudus.com/api/public/events";
+const PAGE_SIZE = 100;
+
+/**
+ * Shape of an event record returned by the Nexudus public events API.
+ * Only the fields we consume are typed here.
+ */
+interface NexudusEventRecord {
+  Id: number;
+  Name: string;
+  ShortDescription: string | null;
+  LongDescription: string | null;
+  Location: string | null;
+  StartDateUtc: string;
+  EndDateUtc: string;
+}
+
+interface NexudusEventsResponse {
+  CalendarEvents: {
+    Records: NexudusEventRecord[];
+    HasNextPage: boolean;
+  };
+}
+
+/**
+ * Fetches every page of upcoming events from the Nexudus public API.
+ */
+const fetchUpcomingRecords = async (): Promise<NexudusEventRecord[]> => {
+  const records: NexudusEventRecord[] = [];
+  let page = 1;
+
+  while (true) {
+    const url = `${API_BASE}?pastEvents=false&page=${page}&top=${PAGE_SIZE}`;
+    console.log(`[${SCRAPER_ID}] Fetching ${url}...`);
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        // A browser-like UA avoids the bot-protection 403 served to headless clients.
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      },
     });
 
-    // For each event, open its detail page and scrape additional information.
-    for (let event of events) {
-      try {
-        await page.goto(event.url!, { waitUntil: "networkidle0", timeout: 60000 });
-        const details = await page.evaluate(() => {
-          const result: { title: string; description: string; dateString?: string; endDateString?: string; } = {
-            title: "",
-            description: ""
-          };
-          const h1 = document.querySelector(".card-event__title");
-          if (h1) {
-            result.title = (h1 as HTMLHeadingElement).innerText.trim();
-          }
-          const descElem = document.querySelector(".event-page-details");
-          if (descElem) {
-            result.description = descElem.innerHTML;
-          }
-          const timeContainer = document.querySelector(".card-event__time");
-          if (timeContainer) {
-            const timeElements = timeContainer.querySelectorAll("time");
-            if (timeElements.length >= 2) {
-              result.dateString = timeElements[0].innerText.replace(/Start Time\s*/, "").trim();
-              result.endDateString = timeElements[1].innerText.replace(/End Time\s*/, "").trim();
-            }
-          }
-          return result;
-        });
-        if (details.title) {
-          event.title = details.title;
-        }
-        if (details.description) {
-          event.description = convertHtmlToMarkdown(details.description);
-        }
-        if (details.dateString) {
-          const parsedStartDate = parse(details.dateString, "MMM d, yyyy h:mm a", new Date());
-          if (!isNaN(parsedStartDate.getTime())) {
-            event.start_at = parsedStartDate.toISOString();
-          }
-        }
-        if (details.endDateString) {
-          const parsedEndDate = parse(details.endDateString, "MMM d, yyyy h:mm a", new Date());
-          if (!isNaN(parsedEndDate.getTime())) {
-            event.end_at = parsedEndDate.toISOString();
-          }
-        }
-      } catch (err) {
-        console.error(`Error scraping event detail from ${event.url}: ${err}`);
-      }
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch events: ${response.status} ${response.statusText}`,
+      );
     }
-    await page.close();
-    return events;
-  },
+
+    const data = (await response.json()) as NexudusEventsResponse;
+    const pageRecords = data.CalendarEvents?.Records ?? [];
+    records.push(...pageRecords);
+
+    if (!data.CalendarEvents?.HasNextPage || pageRecords.length === 0) {
+      break;
+    }
+    page += 1;
+  }
+
+  return records;
+};
+
+/**
+ * Scrapes upcoming events from the Beahive Beacon (Nexudus) events page.
+ */
+const scrapeBeahiveBeaconEvents = async (
+  options: ScrapeOptions,
+): Promise<Event[]> => {
+  const { startDate, endDate = startDate } = options;
+
+  console.log(
+    `[${SCRAPER_ID}] Scraping events from ${formatInTimeZone(
+      startDate,
+      TIME_ZONE,
+      "yyyy-MM-dd",
+    )} to ${formatInTimeZone(endDate, TIME_ZONE, "yyyy-MM-dd")}...`,
+  );
+
+  try {
+    const records = await fetchUpcomingRecords();
+    console.log(`[${SCRAPER_ID}] API returned ${records.length} upcoming events.`);
+
+    const allEvents: Event[] = [];
+
+    for (const record of records) {
+      if (!record.Name || !record.StartDateUtc) {
+        console.warn(
+          `[${SCRAPER_ID}] Skipping event with missing required data: ${record.Name || "Unnamed event"}`,
+        );
+        continue;
+      }
+
+      const eventStart = new Date(record.StartDateUtc);
+      const eventEnd = record.EndDateUtc
+        ? new Date(record.EndDateUtc)
+        : eventStart;
+
+      // Skip events outside the requested date range.
+      if (
+        !isWithinInterval(eventStart, { start: startDate, end: endDate }) &&
+        !isWithinInterval(eventEnd, { start: startDate, end: endDate }) &&
+        !(startDate >= eventStart && endDate <= eventEnd) // Event spans our entire range
+      ) {
+        continue;
+      }
+
+      const slug = slugify(record.Name, { lower: true, strict: true });
+      const html = record.LongDescription || record.ShortDescription || "";
+
+      const scrapedEvent: Event = {
+        title: record.Name.trim(),
+        description: html ? convertHtmlToMarkdown(html) : "",
+        location: record.Location?.trim() || LOCATION_NAME,
+        start_at: eventStart.toISOString(),
+        end_at: eventEnd.toISOString(),
+        url: `${SITE_BASE}/events/view/${record.Id}/${slug}`,
+        external_id: `${SCRAPER_ID}-${record.Id}`,
+      };
+
+      allEvents.push(scrapedEvent);
+      logEventFound(SCRAPER_ID, scrapedEvent);
+    }
+
+    console.log(
+      `[${SCRAPER_ID}] Found ${allEvents.length} events within specified date range.`,
+    );
+
+    try {
+      const validatedEvents = EventsArraySchema.parse(allEvents);
+      console.log(
+        `[${SCRAPER_ID}] Validation successful for ${validatedEvents.length} events.`,
+      );
+      return validatedEvents;
+    } catch (validationError) {
+      console.error(`[${SCRAPER_ID}] Validation error:`, validationError);
+      throw new Error(
+        `[${SCRAPER_ID}] Event validation failed: ${JSON.stringify(validationError)}`,
+      );
+    }
+  } catch (error) {
+    console.error(`[${SCRAPER_ID}] Error scraping events:`, error);
+    return [];
+  }
+};
+
+export const scraper: Scraper = {
+  id: SCRAPER_ID,
+  name: LOCATION_NAME,
+  scrape: scrapeBeahiveBeaconEvents,
 };
