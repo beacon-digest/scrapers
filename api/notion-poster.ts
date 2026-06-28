@@ -16,7 +16,6 @@ import type { Event, NotionIcon, PostResult } from "../types.js";
 import dotenv from "dotenv";
 import { markdownToBlocks } from "@tryfabric/martian";
 import { formatInTimeZone } from "date-fns-tz";
-import { marked } from "marked";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -160,63 +159,49 @@ const formatWithTimeZone = (
   return formatInTimeZone(date, TIME_ZONE, "yyyy-MM-dd'T'HH:mm:ssXXX");
 };
 
-// Function to sanitize markdown links
+/**
+ * Rewrites links/images in a Markdown string so Notion accepts them.
+ *
+ * Notion's API rejects link targets that aren't absolute URLs with
+ * "Invalid URL for link". This operates purely on the Markdown text
+ * (Markdown in → Markdown out) so the result still feeds cleanly into
+ * `markdownToBlocks`:
+ *   - site-relative ("/path")      -> prepend `baseUrl`
+ *   - protocol-relative ("//host") -> prepend "https:"
+ *   - already absolute / mailto / tel -> left as-is
+ *   - anything else (anchors, bare text, ftp, relative files, or
+ *     site-relative when no baseUrl is known) -> link dropped, keeping
+ *     the visible text; broken images are removed entirely.
+ */
 function sanitizeMarkdownLinks(markdown: string, baseUrl: string): string {
   if (!markdown) return "";
-  try {
-    const tokens = marked.lexer(markdown);
-    const newTokens = tokens.map((token) => {
-      if (token.type === "link") {
-        const href = token.href;
-        if (href?.startsWith("/") && !href.startsWith("//")) {
-          // Prepend base URL to relative links
-          token.href = `${baseUrl}${href}`;
-          console.log(
-            `[Link Sanitize] Fixed relative link: ${href} -> ${token.href}`
-          );
-        } else if (
-          href &&
-          !href.startsWith("http") &&
-          !href.startsWith("mailto:") &&
-          !href.startsWith("#")
-        ) {
-          // Handle potentially invalid links (e.g., just text, ftp, etc.)
-          // Option: Remove link by returning just the text
-          console.warn(
-            `[Link Sanitize] Removing potentially invalid link: ${href} (text: ${token.text})`
-          );
-          // To remove, we would ideally alter the token type or structure,
-          // but marked's parser might still render it. A simple approach
-          // for now is to make the href a non-functional placeholder.
-          token.href = "#invalid-link";
-        }
-      }
-      // Recursively sanitize links within nested tokens (like list items)
-      if ("tokens" in token && token.tokens) {
-        token.tokens = token.tokens?.map((nestedToken) => {
-          if (nestedToken.type === "link") {
-            const nestedHref = nestedToken.href;
-            if (nestedHref?.startsWith("/") && !nestedHref.startsWith("//")) {
-              nestedToken.href = `${baseUrl}${nestedHref}`;
-            } else if (
-              nestedHref &&
-              !nestedHref.startsWith("http") &&
-              !nestedHref.startsWith("mailto:") &&
-              !nestedHref.startsWith("#")
-            ) {
-              nestedToken.href = "#invalid-link";
-            }
-          }
-          return nestedToken;
-        });
-      }
-      return token;
-    });
-    return marked.parser(newTokens);
-  } catch (err) {
-    console.error("[Link Sanitize] Error processing markdown:", err);
-    return markdown; // Return original markdown on error
-  }
+  // Matches Markdown links `[text](href "title")` and images `![alt](href "title")`.
+  const linkRegex = /(!?)\[([^\]]*)\]\(\s*([^)\s]+)((?:\s+"[^"]*")?)\s*\)/g;
+  return markdown.replace(linkRegex, (_full, bang, text, href, title) => {
+    let newHref: string | null;
+    if (/^(https?:\/\/|mailto:|tel:)/i.test(href)) {
+      newHref = href; // already absolute and supported
+    } else if (href.startsWith("//")) {
+      newHref = `https:${href}`; // protocol-relative
+    } else if (href.startsWith("/")) {
+      newHref = baseUrl ? `${baseUrl}${href}` : null; // site-relative
+    } else {
+      newHref = null; // anchors, bare text, relative files, ftp, etc.
+    }
+
+    if (newHref === null) {
+      console.warn(
+        `[Link Sanitize] Dropping unsupported ${
+          bang ? "image" : "link"
+        }: ${href}`
+      );
+      return bang ? "" : text;
+    }
+    if (newHref !== href) {
+      console.log(`[Link Sanitize] Rewrote ${href} -> ${newHref}`);
+    }
+    return `${bang}[${text}](${newHref}${title})`;
+  });
 }
 
 /**
@@ -296,15 +281,21 @@ export async function postEventsToNotion(events: Event[]): Promise<PostResult> {
       }
 
       // --- Sanitize Description Links ---
-      // Bypassing sanitizeMarkdownLinks as it seems to convert back to HTML
-      /* 
-      const baseUrlForLinks = "https://www.stanzabooks.com"; // TODO: Fix hardcoded URL
-      const sanitizedDescription = sanitizeMarkdownLinks(
+      // Notion rejects non-absolute link targets ("Invalid URL for link").
+      // Derive the base URL from the event's own URL so relative links in the
+      // description (e.g. "/young-storytellers-guild") become absolute.
+      let baseUrlForLinks = "";
+      if (event.url) {
+        try {
+          baseUrlForLinks = new URL(event.url).origin;
+        } catch {
+          /* leave baseUrlForLinks empty if event.url isn't a valid URL */
+        }
+      }
+      const descriptionForBlocks = sanitizeMarkdownLinks(
         event.description,
         baseUrlForLinks
       );
-      */
-      const descriptionForBlocks = event.description; // Use original Markdown
 
       // --- Remove DEBUG Logs ---
       /*
