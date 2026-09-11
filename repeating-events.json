@@ -33,7 +33,7 @@
     "duration": {
       "hours": 4
     },
-    "rrule": "FREQ=WEEKLY;BYDAY=TU,WE,TH",
+    "rrule": "FREQ=WEEKLY;BYDAY=WE,TH",
     "iconEmoji": "🍳"
   },
   {
