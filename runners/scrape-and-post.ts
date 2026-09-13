@@ -323,51 +323,80 @@ async function main() {
       verbose: argv.verbose as boolean,
     };
 
-    // 3. Run the Scrapers with per-scraper error isolation
+    // 3. Scrape all selected sources concurrently. Posting remains sequential
+    // below so Notion writes are serialized and easier to retry/audit.
+    const scrapedResults: {
+      result: ScraperRunResult;
+      events: import("../types.js").Event[];
+    }[] = [];
+    const scrapeConcurrency = 4;
+    for (let i = 0; i < selectedScrapers.length; i += scrapeConcurrency) {
+      const batch = selectedScrapers.slice(i, i + scrapeConcurrency);
+      const batchResults = await Promise.all(
+        batch.map(async (s) => {
+        const startTime = Date.now();
+        const result: ScraperRunResult = {
+          scraperId: s.id,
+          scraperName: s.name,
+          status: "success",
+          eventsFound: 0,
+          eventsCreated: 0,
+          eventsSkipped: 0,
+          eventsFailed: 0,
+          durationMs: 0,
+        };
+        let events: import("../types.js").Event[] = [];
+
+        try {
+          console.log(`▶️ Running scraper: ${s.name} (${s.id})`);
+          events = await s.scrape(scrapeOptions);
+          result.eventsFound = events.length;
+          console.log(`✅ ${s.name} returned ${events.length} events.`);
+        } catch (error) {
+          result.status = "error";
+          result.error = error as Error;
+          console.error(`❌ Error running scraper ${s.name} (${s.id}):`, error);
+        } finally {
+          result.durationMs = Date.now() - startTime;
+        }
+
+          return { result, events };
+        })
+      );
+      scrapedResults.push(...batchResults);
+    }
+
+    // 4. Post successful scraper results sequentially.
     const results: ScraperRunResult[] = [];
-    for (const s of selectedScrapers) {
-      const startTime = Date.now();
-      const result: ScraperRunResult = {
-        scraperId: s.id,
-        scraperName: s.name,
-        status: "success",
-        eventsFound: 0,
-        eventsCreated: 0,
-        eventsSkipped: 0,
-        eventsFailed: 0,
-        durationMs: 0,
-      };
-
-      try {
-        console.log(`▶️ Running scraper: ${s.name} (${s.id})`);
-        const events = await s.scrape(scrapeOptions);
-        result.eventsFound = events.length;
-        console.log(`✅ ${s.name} returned ${events.length} events.`);
-
-        if (events.length > 0) {
-          if (argv.dryRun) {
-            console.log(
-              `🌵 Dry Run Mode: ${events.length} events found but not posted for ${s.name}`
-            );
-          } else {
-            console.log(`📤 Posting ${events.length} events to Notion for ${s.name}...`);
+    for (const { result, events } of scrapedResults) {
+      if (result.status === "success" && events.length > 0) {
+        if (argv.dryRun) {
+          console.log(
+            `🌵 Dry Run Mode: ${events.length} events found but not posted for ${result.scraperName}`
+          );
+        } else {
+          console.log(
+            `📤 Posting ${events.length} events to Notion for ${result.scraperName}...`
+          );
+          try {
             const postResult = await postEventsToNotion(events);
             result.eventsCreated = postResult.created;
             result.eventsSkipped = postResult.skipped;
             result.eventsFailed = postResult.failed;
+          } catch (error) {
+            result.status = "error";
+            result.error = error as Error;
+            console.error(
+              `❌ Error posting events for ${result.scraperName}:`,
+              error
+            );
           }
         }
-      } catch (error) {
-        result.status = "error";
-        result.error = error as Error;
-        console.error(`❌ Error running scraper ${s.name} (${s.id}):`, error);
-      } finally {
-        result.durationMs = Date.now() - startTime;
-        results.push(result);
       }
+      results.push(result);
     }
 
-    // 4. Print digest
+    // 5. Print digest
     printDigest(results, argv.dryRun);
 
     // Determine overall success
