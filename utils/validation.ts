@@ -17,13 +17,13 @@ export const EventSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string(),
   start_at: z.string().regex(
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:.\d{3}Z|[-+]\d{2}:\d{2})$/, // Allow ISO strings with Z or offset
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3}Z|Z|[-+]\d{2}:\d{2})$/, // Allow ISO strings with Z, milliseconds, or offset
     "start_at must be in ISO format YYYY-MM-DDThh:mm:ssZ or with timezone offset"
   ),
   end_at: z
     .string()
     .regex(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:.\d{3}Z|[-+]\d{2}:\d{2})$/,
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3}Z|Z|[-+]\d{2}:\d{2})$/,
       "end_at must be in ISO format YYYY-MM-DDThh:mm:ssZ or with timezone offset"
     )
     .optional(),
