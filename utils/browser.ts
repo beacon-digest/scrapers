@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import puppeteer from "puppeteer";
 import type { Browser, LaunchOptions } from "puppeteer";
 
@@ -13,6 +14,17 @@ const getLaunchOptions = (): LaunchOptions => {
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
     timeout: 60000, // 60 second timeout
   };
+
+  const configuredExecutablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  if (configuredExecutablePath) {
+    options.executablePath = configuredExecutablePath;
+  } else if (
+    process.platform === "linux" &&
+    fs.existsSync("/opt/data/local-chromium/usr/lib/chromium/chromium")
+  ) {
+    options.executablePath =
+      "/opt/data/local-chromium/usr/lib/chromium/chromium";
+  }
 
   // Use installed Chrome on Apple Silicon Macs if available
   if (process.platform === "darwin" && process.arch === "arm64") {
