@@ -148,6 +148,10 @@ async function main() {
       type: "boolean",
       default: false,
     })
+    .option("scrapers", {
+      description: "Comma-separated scraper IDs to run",
+      type: "string",
+    })
     .option("verbose", {
       alias: "v",
       description: "Show verbose progress logs during scraping",
@@ -220,9 +224,28 @@ async function main() {
 
   // --- Scraper Selection and Date Parsing ---
   let selectedScrapers: Scraper[];
-  if (argv.all) {
+  if (argv.all && argv.scrapers) {
+    throw new Error("Use either --all or --scrapers, not both.");
+  } else if (argv.all) {
     console.log("🚀 Running all scrapers...");
     selectedScrapers = scrapers;
+  } else if (argv.scrapers) {
+    const requestedIds = argv.scrapers
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+    const invalidIds = requestedIds.filter(
+      (id) => !scrapers.some((scraper) => scraper.id === id)
+    );
+    if (requestedIds.length === 0 || invalidIds.length > 0) {
+      throw new Error(
+        `Invalid --scrapers value. Unknown scraper IDs: ${invalidIds.join(", ") || "none provided"}`
+      );
+    }
+    selectedScrapers = requestedIds.map((id) =>
+      scrapers.find((scraper) => scraper.id === id)!
+    );
+    console.log(`🚀 Running selected scrapers: ${requestedIds.join(", ")}`);
   } else {
     let scraperId = argv.scraper as string | undefined;
     // If scraper ID was not provided via args, prompt the user
