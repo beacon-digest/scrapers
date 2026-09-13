@@ -92,24 +92,15 @@ function parseDiaDateTimeString(dateTimeString: string): {
         endPeriod,
       ] = match;
 
-      // Infer startPeriod if missing (e.g., "11–12 pm")
       if (!startPeriod) {
-        const startH = Number.parseInt(startHour, 10);
+        // Dia commonly omits the start-period marker. For ranges such as
+        // "1–2 pm", both times are in the afternoon; noon is the exception
+        // where "11–12 pm" means 11 am to noon.
         const endH = Number.parseInt(endHour, 10);
-        if (
-          endPeriod.toLowerCase() === "pm" &&
-          startH < endH &&
-          startH !== 12
-        ) {
-          // If end is PM and start hour is numerically less, assume start is AM unless start is 12
-          startPeriod = "am";
-        } else if (endPeriod.toLowerCase() === "am" && startH > endH) {
-          // If end is AM and start hour is numerically more (e.g. 10pm-1am), assume start is PM. unlikely for Dia?
-          startPeriod = "pm"; // This is a guess, might need refinement
-        } else {
-          // Otherwise, assume start period is the same as end period
-          startPeriod = endPeriod;
-        }
+        startPeriod =
+          endPeriod.toLowerCase() === "pm" && endH !== 12
+            ? "pm"
+            : endPeriod;
       }
 
       startTimeStr = convert12to24Dia(startHour, startMin, startPeriod);
@@ -198,6 +189,9 @@ const scrapeDiaBeaconEvents = async (
     throw new Error("A Puppeteer browser instance must be provided.");
   }
 
+  const rangeStart = format(startDate, "yyyy-MM-dd");
+  const rangeEnd = format(endDate, "yyyy-MM-dd");
+
   const formattedStartDate = format(startDate, "yyyy-MM-dd");
   const calendarUrl = BASE_URL_TEMPLATE.replace(
     "{YYYY-MM-DD}",
@@ -237,34 +231,8 @@ const scrapeDiaBeaconEvents = async (
 
     await page.goto(calendarUrl, { waitUntil: "networkidle0", timeout: 90000 }); // Increased timeout
 
-    // --- Log Main Content Area HTML --- START
-    try {
-      const mainContentHTML = await page.evaluate(() => {
-        const mainElement = document.querySelector("main");
-        if (mainElement) {
-          return mainElement.outerHTML;
-        }
-        // Fallback if <main> not found
-        console.warn(
-          `[${SCRAPER_ID}] <main> element not found, logging body instead.`
-        );
-        return document.body.outerHTML;
-      });
-      console.log(
-        `[${SCRAPER_ID}] Main content area HTML snapshot:\n${mainContentHTML.substring(
-          0,
-          4000
-        )}...`
-      ); // Log more characters
-    } catch (logError) {
-      console.error(
-        `[${SCRAPER_ID}] Failed to get main content HTML for debugging:`,
-        logError
-      );
-    }
-    // --- Log Main Content Area HTML --- END
-
-    // Wait for event listings to be present
+    // Wait briefly for the current calendar layout. The listing selector is
+    // checked below and the scraper can still handle an empty calendar.
     // Trying a selector that targets the event article container
     // New Strategy: Select a container likely holding title, date, etc.
     const eventSelector = "section.calendar article";
@@ -419,11 +387,14 @@ const scrapeDiaBeaconEvents = async (
         );
 
         // Also filter if date parsing failed entirely
+        const eventDateString = eventDate
+          ? format(eventDate, "yyyy-MM-dd")
+          : "";
         if (
           !eventDate ||
           !startTimeIso ||
-          eventDate < startDate ||
-          eventDate >= endDate
+          eventDateString < rangeStart ||
+          eventDateString > rangeEnd
         ) {
           // console.log(`[${SCRAPER_ID}] Filtering out event "${rawEvent.rawTitle}" on ${eventDate ? format(eventDate, 'yyyy-MM-dd') : 'unknown date'} (outside range [${formatDate(startDate)}, ${formatDate(endDate)}))`);
           continue;
@@ -441,51 +412,21 @@ const scrapeDiaBeaconEvents = async (
               timeout: 60000,
             });
 
-            // --- Log Detail Page Main Content Area HTML --- START
-            try {
-              const detailPageHTML = await page.evaluate(() => {
-                const mainElement = document.querySelector("main");
-                if (mainElement) {
-                  return mainElement.outerHTML;
-                }
-                console.warn(
-                  `[${SCRAPER_ID}] Detail page <main> not found, logging body.`
-                );
-                return document.body.outerHTML;
-              });
-              console.log(
-                `[${SCRAPER_ID}] Detail page HTML snapshot (${
-                  rawEvent.rawUrl
-                }):\n${detailPageHTML.substring(0, 4000)}...`
-              );
-            } catch (logError) {
-              console.error(
-                `[${SCRAPER_ID}] Failed to get detail page HTML for debugging:`,
-                logError
-              );
-            }
-            // --- Log Detail Page Main Content Area HTML --- END
-
-            // Wait for the main content area to likely contain the description
-            const descriptionContainerSelector = "div.right.fadeInt";
-            await page.waitForSelector(descriptionContainerSelector, {
-              timeout: 30000,
+            const descriptionHtml = await page.evaluate(() => {
+              const selectors = [
+                "div.right.fadeInt",
+                ".event-description",
+                "main article .col-content",
+                "main article",
+                "main",
+              ];
+              for (const selector of selectors) {
+                const element = document.querySelector(selector);
+                const text = element?.textContent?.trim() || "";
+                if (text) return element?.innerHTML || "";
+              }
+              return "";
             });
-
-            // Extract description HTML from paragraphs within the container
-            const descriptionHtml = await page.evaluate((selector) => {
-              const container = document.querySelector(selector);
-              if (!container) return "";
-              // Select all paragraphs within the container
-              const paragraphs = container.querySelectorAll("p");
-              // Filter out potential empty paragraphs or those with just &nbsp;
-              const relevantParagraphs = Array.from(paragraphs).filter(
-                (p) =>
-                  p.textContent?.trim() && p.textContent.trim() !== "&nbsp;"
-              );
-              // Get innerHTML of relevant paragraphs
-              return relevantParagraphs.map((p) => p.innerHTML).join("\n\n"); // Join paragraphs with double newline
-            }, descriptionContainerSelector);
 
             if (descriptionHtml) {
               description = convertHtmlToMarkdown(descriptionHtml);
@@ -621,10 +562,15 @@ const scrapeDiaBeaconEvents = async (
     }
   } catch (error) {
     console.error(`[${SCRAPER_ID}] An unexpected error occurred:`, error);
-    return []; // Return empty array on major failure
+    // Keep events successfully processed before a browser/network failure.
+    return allEvents;
   } finally {
     if (page && !page.isClosed()) {
-      await page.close();
+      try {
+        await page.close();
+      } catch (closeError) {
+        console.warn(`[${SCRAPER_ID}] Could not close page cleanly:`, closeError);
+      }
     }
     // Runner manages closing the browser instance
   }
