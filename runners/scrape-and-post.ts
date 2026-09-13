@@ -281,16 +281,13 @@ async function main() {
 
   if (argv.endDate) {
     endDateString = argv.endDate as string;
-    // Ensure end date represents the *end* of the specified day
-    endDate = toDate(`${endDateString}T23:59:59.999`, { timeZone: TIME_ZONE });
+    // Scrapers consume calendar dates inclusively. Keep the end instant at
+    // midnight in the target timezone so UTC conversion cannot add a day.
+    endDate = toDate(`${endDateString}T00:00:00`, { timeZone: TIME_ZONE });
     console.log(`Using provided end date: ${endDateString}`);
   } else {
-    // Default end date is 30 days after the *start* date
     endDate = addDays(startDate, 30);
-    // Ensure this also represents the *end* of that 30th day
-    const endDateStrTemp = format(endDate, dateFormat);
-    endDate = toDate(`${endDateStrTemp}T23:59:59.999`, { timeZone: TIME_ZONE });
-    endDateString = format(endDate, dateFormat); // Format the final end date
+    endDateString = format(endDate, dateFormat);
     console.log(
       `End date not provided, defaulting to 30 days after start date: ${endDateString}`
     );

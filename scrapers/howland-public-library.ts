@@ -31,7 +31,9 @@ const scrapeHowlandLibraryEvents = async (
 
   const datesToScrape = getDatesInRange(startDate, endDate);
   const allEvents: Event[] = [];
-  let page: import("puppeteer").Page | undefined; // Declare page outside the loop with explicit type
+  let calendarPage: import("puppeteer").Page | undefined;
+  let detailPage: import("puppeteer").Page | undefined;
+  let loadedCalendarUrl: string | undefined;
 
   console.log(
     `[${SCRAPER_ID}] Scraping events from ${formatDate(
@@ -40,9 +42,13 @@ const scrapeHowlandLibraryEvents = async (
   );
 
   try {
-    page = await browser.newPage();
-    await page.setUserAgent(
+    calendarPage = await browser.newPage();
+    detailPage = await browser.newPage();
+    await calendarPage.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36", // Set a common user agent
+    );
+    await detailPage.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
     );
 
     for (const targetDate of datesToScrape) {
@@ -52,21 +58,26 @@ const scrapeHowlandLibraryEvents = async (
 
       if (options.verbose) {
         console.log(`[${SCRAPER_ID}] Processing date: ${targetDateString}`);
-        console.log(
-          `[${SCRAPER_ID}] Navigating to calendar month: ${calendarUrl}`,
-        );
+        if (loadedCalendarUrl !== calendarUrl) {
+          console.log(
+            `[${SCRAPER_ID}] Navigating to calendar month: ${calendarUrl}`,
+          );
+        }
       }
 
       try {
-        await page.goto(calendarUrl, {
-          waitUntil: "networkidle0",
-          timeout: 60000,
-        });
+        if (loadedCalendarUrl !== calendarUrl) {
+          await calendarPage.goto(calendarUrl, {
+            waitUntil: "networkidle0",
+            timeout: 60000,
+          });
 
-        // Wait for calendar script data to load
-        await page.waitForSelector("script[type='application/ld+json']", {
-          timeout: 60000,
-        });
+          // Wait for calendar script data to load
+          await calendarPage.waitForSelector("script[type='application/ld+json']", {
+            timeout: 60000,
+          });
+          loadedCalendarUrl = calendarUrl;
+        }
 
         if (options.verbose) {
           console.log(
@@ -75,8 +86,8 @@ const scrapeHowlandLibraryEvents = async (
         }
 
         // Extract JSON-LD scripts for the target date
-        const eventsForDate = await page.evaluate(
-          (dateStr, scraperId, locationName, debugEndpoint) => {
+        const eventsForDate = await calendarPage.evaluate(
+          (dateStr, scraperId, locationName) => {
             const scripts = Array.from(
               document.querySelectorAll("script[type='application/ld+json']"),
             );
@@ -85,11 +96,6 @@ const scrapeHowlandLibraryEvents = async (
             for (const script of scripts) {
               try {
                 const data = JSON.parse(script.textContent || "");
-                // #region agent log
-                if (data["@type"] === "Event") {
-                  fetch(debugEndpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'howland-public-library.ts:JSON-LD',message:'JSON-LD Event found',data:{name:data.name,startDate:data.startDate,url:data.url,targetDateStr:dateStr,matches:data.startDate===dateStr},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
-                }
-                // #endregion
                 // Ensure data.startDate matches the specific target date string (YYYY-MM-DD)
                 if (data["@type"] === "Event" && data.startDate === dateStr) {
                   // Extract original external_id from URL
@@ -123,7 +129,6 @@ const scrapeHowlandLibraryEvents = async (
           targetDateString,
           SCRAPER_ID,
           LOCATION_NAME,
-          'http://127.0.0.1:7244/ingest/c1562f93-2e06-49b7-a1cb-ab2d17355181',
         );
 
         if (options.verbose) {
@@ -136,12 +141,12 @@ const scrapeHowlandLibraryEvents = async (
         for (const event of eventsForDate) {
           if (event.url) {
             try {
-              await page.goto(event.url, {
+              await detailPage.goto(event.url, {
                 waitUntil: "networkidle0",
                 timeout: 60000,
               });
 
-              await page.waitForSelector(".event-description", {
+              await detailPage.waitForSelector(".event-description", {
                 timeout: 60000,
               });
 
@@ -149,14 +154,14 @@ const scrapeHowlandLibraryEvents = async (
               let headerText = "";
               try {
                 // Try to get the header text from h3.event-meta
-                headerText = await page.$eval(
+                headerText = await detailPage.$eval(
                   "h3.event-meta",
                   (el) => el.textContent || "",
                 );
               } catch {
                 try {
                   // If h3.event-meta doesn't exist, try to get it from h3 tag directly (new format)
-                  headerText = await page.$eval(
+                  headerText = await detailPage.$eval(
                     "h3",
                     (el) => el.textContent || "",
                   );
@@ -167,83 +172,15 @@ const scrapeHowlandLibraryEvents = async (
                 }
               }
 
-              let eventDate = targetDateString; // Default to the target date
-
-              // Updated regex to handle cases where date and time run together
-              // For example: "Wednesday, August 204:00—4:30 PM" or "Wednesday, September 91:00 AM"
-              // We want to capture day (1-2 digits) and separate it from any time that follows
-              // Use a more restrictive approach: capture the longest sequence of digits after month
-              // Then validate and correct if it includes time digits
-              // #region agent log
-              fetch('http://127.0.0.1:7244/ingest/c1562f93-2e06-49b7-a1cb-ab2d17355181',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'howland-public-library.ts:headerText',message:'Header text extracted',data:{headerText,eventUrl:event.url},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-              // #endregion
-              const headerDateMatch = headerText.match(
-                /([A-Za-z]+),\s+([A-Za-z]+)\s+(\d+)/,
-              );
-
-              // Additional validation and correction for when day/time run together
-              let correctedDay = null;
-              if (headerDateMatch) {
-                const potentialDay = headerDateMatch[3];
-
-                // Check if this looks like day+time (e.g., "310" from "310:00")
-                // Look for pattern where captured digits are followed by ":XX"
-                const afterDayMatch = headerText.match(
-                  new RegExp(
-                    `([A-Za-z]+),\\s+([A-Za-z]+)\\s+${potentialDay}(:\\d{2})`,
-                  ),
-                );
-
-                if (afterDayMatch && afterDayMatch[3]) {
-                  // We captured day+time digits, need to separate them
-                  // Try different splits: double digit day first, then single digit day
-                  for (let dayLength = 2; dayLength >= 1; dayLength--) {
-                    if (potentialDay.length > dayLength) {
-                      const testDay = potentialDay.substring(0, dayLength);
-                      const testDayNum = parseInt(testDay);
-                      const remainingDigits = potentialDay.substring(dayLength);
-
-                      // Check if this makes sense (valid day 1-31, and remaining digits could be hour)
-                      if (
-                        testDayNum >= 1 &&
-                        testDayNum <= 31 &&
-                        parseInt(remainingDigits) >= 0 &&
-                        parseInt(remainingDigits) <= 23
-                      ) {
-                        correctedDay = testDay;
-                        break;
-                      }
-                    }
-                  }
-                } else if (
-                  parseInt(potentialDay) >= 1 &&
-                  parseInt(potentialDay) <= 31
-                ) {
-                  // Normal case - captured day is valid and not mixed with time
-                  correctedDay = potentialDay;
-                }
-              }
-              // #region agent log
-              fetch('http://127.0.0.1:7244/ingest/c1562f93-2e06-49b7-a1cb-ab2d17355181',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'howland-public-library.ts:correctedDay',message:'Day correction result',data:{headerDateMatch:headerDateMatch?{full:headerDateMatch[0],dayOfWeek:headerDateMatch[1],month:headerDateMatch[2],potentialDay:headerDateMatch[3]}:null,correctedDay,eventUrl:event.url},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-              // #endregion
-              if (headerDateMatch && correctedDay) {
-                const [, , month] = headerDateMatch;
-                const day = correctedDay;
-                const year = targetDate.getFullYear(); // Use year from targetDate
-                const monthNumber = getMonthNumber(month);
-                if (monthNumber) {
-                  eventDate = `${year}-${monthNumber}-${day.padStart(2, "0")}`;
-                } else {
-                  console.warn(
-                    `[${SCRAPER_ID}] Could not get month number for: ${month}`,
-                  );
-                }
-              }
+              // The calendar JSON-LD matched this event to targetDateString. Use
+              // that structured date as authoritative; detail-page text can be
+              // malformed as "October 210:00 AM" and misread as October 21.
+              const eventDate = targetDateString;
 
               let timeText = "";
               try {
                 // Try to get time from span.event-time
-                timeText = await page.$eval(
+                timeText = await detailPage.$eval(
                   "span.event-time",
                   (el) => el.textContent || "",
                 );
@@ -285,14 +222,7 @@ const scrapeHowlandLibraryEvents = async (
                 }
               }
 
-              // #region agent log
-              fetch('http://127.0.0.1:7244/ingest/c1562f93-2e06-49b7-a1cb-ab2d17355181',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'howland-public-library.ts:timeText',message:'Time text and eventDate before parse',data:{timeText,eventDate,eventUrl:event.url},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-              // #endregion
               const { startTime, endTime } = parseTimeText(timeText);
-
-              // #region agent log
-              fetch('http://127.0.0.1:7244/ingest/c1562f93-2e06-49b7-a1cb-ab2d17355181',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'howland-public-library.ts:parsedTimes',message:'Parsed start/end times',data:{startTime,endTime,eventDate,eventUrl:event.url},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
-              // #endregion
               if (startTime) {
                 const dateTimeString = `${eventDate}T${startTime}`;
                 try {
@@ -343,7 +273,7 @@ const scrapeHowlandLibraryEvents = async (
               }
 
               // --- Get Description ---
-              const descriptionHtml = await page.$eval(
+              const descriptionHtml = await detailPage.$eval(
                 ".event-description",
                 (el) => el.innerHTML,
               );
@@ -405,39 +335,17 @@ const scrapeHowlandLibraryEvents = async (
     // Depending on requirements, could return [], or rethrow
     return []; // Return empty array on major failure
   } finally {
-    // Close the page if it was opened
-    if (page && !page.isClosed()) {
-      await page.close();
+    if (calendarPage && !calendarPage.isClosed()) {
+      await calendarPage.close();
     }
-    // IMPORTANT: We do NOT close the browser here.
-    // The runner script that called this function is responsible for closing
-    // the shared browser instance when all scraping is done.
+    if (detailPage && !detailPage.isClosed()) {
+      await detailPage.close();
+    }
+    // The runner owns the shared browser instance.
   }
 };
 
 // --- Helper Functions ---
-
-/**
- * Converts month name to zero-padded number string (e.g., "April" -> "04").
- */
-function getMonthNumber(monthName: string): string | null {
-  const months: Record<string, string> = {
-    january: "01",
-    february: "02",
-    march: "03",
-    april: "04",
-    may: "05",
-    june: "06",
-    july: "07",
-    august: "08",
-    september: "09",
-    october: "10",
-    november: "11",
-    december: "12",
-  };
-  const lowerMonth = monthName?.toLowerCase();
-  return lowerMonth ? months[lowerMonth] || null : null;
-}
 
 /**
  * Parses time string like "10:00 AM—1:00 PM" or "7-8 PM" into start and end times.
