@@ -10,7 +10,8 @@ import { scraper as theYardBeaconScraper } from "./the-yard-beacon.js";
 import { scraper as repeatingEventsScraper } from "./repeating-events.js";
 import { scraper as beahiveBeaconScraper } from "./beahive-beacon.js";
 import { scraper as beaconGovScraper } from "./beacon-government.js";
-import { scraper as savageWonderScraper } from "./savage-wonder.js";
+// Disabled: Savage Wonder is closing down; retain the scraper for reference/reuse.
+// import { scraper as savageWonderScraper } from "./savage-wonder.js";
 import { scraper as bauGalleryScraper } from "./bau-gallery.js";
 import { scraper as industrialArtsBrewingScraper } from "./industrial-arts-brewing.js";
 import { scraper as saintRitasMusicRoomScraper } from "./saint-ritas-music-room.js";
@@ -31,7 +32,8 @@ export const scrapers: Scraper[] = [
   repeatingEventsScraper,
   beahiveBeaconScraper,
   beaconGovScraper,
-  savageWonderScraper,
+  // Disabled: Savage Wonder is closing down; retain the scraper implementation.
+  // savageWonderScraper,
   bauGalleryScraper,
   industrialArtsBrewingScraper,
   saintRitasMusicRoomScraper,
