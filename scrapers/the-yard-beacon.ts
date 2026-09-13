@@ -17,9 +17,6 @@ import { convertHtmlToMarkdown } from "../utils/markdown.js";
 import { EventsArraySchema } from "../utils/validation.js";
 import { formatDate } from "../utils/date.js"; // For logging
 
-// --- Add Node.js HTML Parser Import ---
-import { parse as parseHtml } from "node-html-parser";
-
 const SCRAPER_ID = "the-yard-beacon";
 const LOCATION_NAME = "The Yard";
 const BASE_URL = "https://www.theyardbeacon.com";
@@ -137,263 +134,67 @@ const scrapeTheYardEvents = async (
 
     await page.goto(EVENTS_URL, { waitUntil: "networkidle0", timeout: 90000 });
 
-    const parentSelector = "#dice-event-list-widget";
-    let parentHTML = "";
+    const sourceSelector =
+      ".eventlist--upcoming article.eventlist-event, #dice-event-list-widget article";
 
-    try {
-      // Wait for the parent container
-      await page.waitForSelector(parentSelector, { timeout: 30000 });
-      console.log(
-        `[${SCRAPER_ID}] Parent container selector "${parentSelector}" found.`,
+    await page.waitForSelector(sourceSelector, { timeout: 15000 }).catch(() => {
+      throw new Error(
+        `[${SCRAPER_ID}] No upcoming event source loaded. Expected native Squarespace events or populated Dice widget.`,
       );
+    });
 
-      // Wait for the Dice widget to load dynamic content
-      await page.waitForFunction(
-        () => {
-          const widget = document.querySelector("#dice-event-list-widget");
-          return widget && widget.children.length > 0;
-        },
-        { timeout: 30000 },
-      );
-      console.log(`[${SCRAPER_ID}] Dice widget content loaded.`);
+    const rawEventsData = await page.evaluate((selector) => {
+      const monthNumbers: Record<string, string> = {
+        jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+        jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
+      };
+      const events: { title: string; url: string; dateStr: string; timeStr: string }[] = [];
 
-      // Fetch the HTML content of the parent container
-      parentHTML = await page.$eval(parentSelector, (el) => el.outerHTML);
-      console.log(
-        `[${SCRAPER_ID}] Fetched outerHTML of parent ${parentSelector}. Length: ${parentHTML.length}`,
-      );
+      for (const article of Array.from(document.querySelectorAll(selector))) {
+        const native = article.matches(".eventlist-event");
+        const titleElement = native
+          ? article.querySelector(".eventlist-title-link")
+          : article.querySelector("img[alt], img");
+        const linkElement = native
+          ? article.querySelector(".eventlist-title-link")
+          : article.querySelector('a[href*="dice.fm"]');
+        const title = (native ? titleElement?.textContent : titleElement?.getAttribute("alt"))?.trim() || "";
+        const url = (linkElement as HTMLAnchorElement | null)?.href || "";
 
-      if (!parentHTML) {
-        throw new Error(`Fetched parent HTML for ${parentSelector} is empty.`);
-      }
-    } catch (e) {
-      console.error(
-        `[${SCRAPER_ID}] Error finding or fetching parent selector '${parentSelector}':`,
-        e,
-      );
-      // Log body HTML for debugging if wait fails
-      try {
-        const bodyHTML = await page.evaluate(() => document.body.outerHTML);
-        console.log(
-          `[${SCRAPER_ID}] Fallback body HTML snapshot on failure:\n${bodyHTML.substring(
-            0,
-            2000,
-          )}...`,
-        );
-      } catch (logError) {
-        console.error(
-          `[${SCRAPER_ID}] Failed to get body HTML for debugging:`,
-          logError,
-        );
-      }
-      return []; // Return empty if wait fails
-    }
-
-    // --- Extract Data Using Browser Evaluation --- START
-    const rawEventsData: RawEventData[] = [];
-    console.log(`[${SCRAPER_ID}] Extracting event data from live DOM...`);
-
-    try {
-      const eventsData = await page.evaluate(() => {
-        const events: any[] = [];
-        const articles = document.querySelectorAll(
-          "#dice-event-list-widget article",
-        );
-
-        // First, try to find any data attributes or hidden elements with date info
-        const widget = document.querySelector("#dice-event-list-widget");
-
-        // Look for any script tags or data attributes that might contain event data
-        const scripts = document.querySelectorAll("script");
-        let eventDataFromScript: any = null;
-
-        for (const script of scripts) {
-          const scriptContent = script.textContent || "";
-          if (
-            scriptContent.includes("dice") ||
-            scriptContent.includes("event")
-          ) {
-            // Try to extract JSON data that might contain event info
-            try {
-              const jsonMatch = scriptContent.match(/\{.*"date".*\}/);
-              if (jsonMatch) {
-                eventDataFromScript = JSON.parse(jsonMatch[0]);
-              }
-            } catch (e) {
-              // Ignore JSON parse errors
-            }
+        let dateStr = native
+          ? article.querySelector("time.event-date")?.getAttribute("datetime") || ""
+          : "";
+        let timeStr = "";
+        if (native) {
+          const start = article.querySelector(".event-time-localized-start")?.textContent?.trim() || "";
+          const end = article.querySelector(".event-time-localized-end")?.textContent?.trim() || "";
+          timeStr = [start, end].filter(Boolean).join(" " ).replace(/\u00a0/g, " " );
+        } else {
+          const text = article.textContent || "";
+          const dateMatch = text.match(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i);
+          const timeMatch = text.match(/\b\d{1,2}:\d{2}\s*(?:am|pm)\b(?:\s+\d{1,2}:\d{2}\s*(?:am|pm)\b)?/i);
+          if (dateMatch) {
+            const [, , day, month] = dateMatch;
+            dateStr = `${new Date().getFullYear()}-${monthNumbers[month.toLowerCase()]}-${day.padStart(2, "0")}`;
           }
+          timeStr = timeMatch?.[0] || "";
         }
 
-        articles.forEach((article, index) => {
-          const imgElement = article.querySelector("img");
-          const linkElement = article.querySelector('a[href*="dice.fm"]');
-
-          if (imgElement && linkElement) {
-            const title = imgElement.getAttribute("alt")?.trim() || "";
-            const url = linkElement.getAttribute("href") || "";
-
-            let dateStr = "";
-            let timeStr = "";
-
-            // Method 2: Check data attributes on the article and its children (as fallback)
-            const allElements = [
-              article,
-              ...Array.from(article.querySelectorAll("*")),
-            ];
-            for (const element of allElements) {
-              // Check common data attribute names
-              const dataDate =
-                element.getAttribute("data-date") ||
-                element.getAttribute("data-event-date") ||
-                element.getAttribute("data-start-date") ||
-                element.getAttribute("datetime");
-
-              const dataTime =
-                element.getAttribute("data-time") ||
-                element.getAttribute("data-event-time") ||
-                element.getAttribute("data-start-time");
-
-              if (dataDate && !dateStr) {
-                dateStr = dataDate;
-              }
-              if (dataTime && !timeStr) {
-                timeStr = dataTime;
-              }
-            }
-
-            // Method 3: Look for date/time in adjacent DOM elements (as fallback)
-            let currentElement = article;
-            for (let i = 0; i < 5; i++) {
-              const nextSibling = currentElement.nextElementSibling;
-              const prevSibling = currentElement.previousElementSibling;
-
-              [nextSibling, prevSibling].forEach((sibling) => {
-                if (sibling && (!dateStr || !timeStr)) {
-                  const siblingText = sibling.textContent || "";
-
-                  // Look for date patterns in adjacent elements
-                  const dateMatch = siblingText.match(
-                    /\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i,
-                  );
-
-                  if (dateMatch && !dateStr) {
-                    const [, day, date, month] = dateMatch;
-                    const monthMap: { [key: string]: string } = {
-                      Jan: "01",
-                      Feb: "02",
-                      Mar: "03",
-                      Apr: "04",
-                      May: "05",
-                      Jun: "06",
-                      Jul: "07",
-                      Aug: "08",
-                      Sep: "09",
-                      Oct: "10",
-                      Nov: "11",
-                      Dec: "12",
-                    };
-                    const monthNum = monthMap[month];
-                    if (monthNum) {
-                      dateStr = `2025-${monthNum}-${date.padStart(2, "0")}`;
-                    }
-                  }
-
-                  // Look for time patterns
-                  const timeMatch = siblingText.match(
-                    /\b(\d{1,2}:\d{2})\s*(am|pm)?\b/i,
-                  );
-                  if (timeMatch && !timeStr) {
-                    timeStr = timeMatch[0];
-                  }
-                }
-              });
-
-              currentElement = nextSibling || currentElement;
-              if (!currentElement) break;
-            }
-
-            // Method 1: Use hardcoded mapping based on known event information (prioritized)
-            // This ensures we get the correct dates for known events
-            const eventDateMap: {
-              [key: string]: { date: string; time: string };
-            } = {
-              "Doors at Seven Presents": {
-                date: "2025-08-24",
-                time: "6:00 PM",
-              },
-              "Julie Doiron": { date: "2025-09-17", time: "7:00 PM" },
-              "Will Stratton": { date: "2025-08-30", time: "7:00 PM" },
-              "Shaki Tavi": { date: "2025-09-01", time: "7:00 PM" },
-              "Esther Rose": { date: "2025-09-15", time: "7:00 PM" },
-            };
-
-            // Try to match the title to our known events first
-            for (const [eventKey, eventInfo] of Object.entries(eventDateMap)) {
-              if (title.toLowerCase().includes(eventKey.toLowerCase())) {
-                dateStr = eventInfo.date;
-                timeStr = eventInfo.time;
-                break;
-              }
-            }
-
-            // Check if this looks like an event link by examining the URL structure
-            if (title && url && url.includes("dice.fm")) {
-              events.push({
-                title,
-                url,
-                dateStr: dateStr || new Date().toISOString().split("T")[0],
-                timeStr: timeStr || "7:00 PM",
-                rawHtml: article.outerHTML.substring(0, 500),
-                debugInfo: {
-                  foundDateStr: dateStr,
-                  foundTimeStr: timeStr,
-                  eventIndex: index,
-                  searchTitle: title.substring(0, 20),
-                  extractionMethod: dateStr
-                    ? dateStr.includes("2025-08-24")
-                      ? "hardcoded"
-                      : "extracted"
-                    : "fallback",
-                },
-              });
-            }
-          }
-        });
-
-        return events;
-      });
-
-      console.log(
-        `[${SCRAPER_ID}] Found ${eventsData.length} events via browser evaluation.`,
-      );
-
-      for (const eventData of eventsData) {
-        console.log(
-          `[${SCRAPER_ID}] Event: "${eventData.title}" - Date: ${eventData.dateStr}, Time: ${eventData.timeStr}`,
-        );
-        console.log(
-          `[${SCRAPER_ID}] Debug info for event ${eventData.debugInfo.eventIndex}: foundDate=${eventData.debugInfo.foundDateStr}, foundTime=${eventData.debugInfo.foundTimeStr}`,
-        );
-
-        rawEventsData.push({
-          title: eventData.title,
-          url: eventData.url,
-          dateStr: eventData.dateStr,
-          timeStr: eventData.timeStr,
-        });
+        // Do not infer dates or times. In particular, do not include
+        // multi-day exhibition blocks without a specific event date.
+        if (title && url && dateStr && timeStr) {
+          events.push({ title, url, dateStr, timeStr });
+        }
       }
-    } catch (evalError) {
-      console.error(
-        `[${SCRAPER_ID}] Error during browser evaluation:`,
-        evalError,
+      return events;
+    }, sourceSelector);
+
+    if (rawEventsData.length === 0) {
+      throw new Error(
+        `[${SCRAPER_ID}] Event source loaded but contained no dated upcoming events.`,
       );
     }
-    // --- Extract Data Using Browser Evaluation --- END
-
-    console.log(
-      `[${SCRAPER_ID}] Found ${rawEventsData.length} raw event elements via Node parsing. Processing...`,
-    );
+    console.log(`[${SCRAPER_ID}] Found ${rawEventsData.length} dated event elements. Processing...`);
 
     // --- Event processing logic (restored) --- START
     const dateInterval = {
@@ -503,10 +304,14 @@ const scrapeTheYardEvents = async (
     }
   } catch (error) {
     console.error(`[${SCRAPER_ID}] An unexpected error occurred:`, error);
-    return [];
+    throw error;
   } finally {
     if (page && !page.isClosed()) {
-      await page.close();
+      try {
+        await page.close();
+      } catch (closeError) {
+        console.warn(`[${SCRAPER_ID}] Could not close page cleanly:`, closeError);
+      }
     }
   }
 };
