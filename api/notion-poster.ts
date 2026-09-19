@@ -30,6 +30,45 @@ const notion = new Client({
 
 const databaseId = process.env.NOTION_DATABASE_ID;
 
+function normalizeLocationName(name: string): string {
+  return name
+    .replace(/[‘’ʼ′]/g, "'")
+    .replace(/[“”]/g, '"')
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function locationVenueName(name: string): string {
+  return normalizeLocationName(name).replace(/\s*\([^)]*\)\s*$/, "").trim();
+}
+
+function locationAddress(name: string): string | null {
+  const match = normalizeLocationName(name).match(/\(([^()]*)\)\s*$/);
+  return match?.[1]?.trim() || null;
+}
+
+/**
+ * Finds only an exact full name, venue name, or parenthetical address match.
+ * Substring matching is deliberately avoided: a generic option such as "Main
+ * Street" must not match every venue whose address is on Main Street, while
+ * "446 Main Street" can still match "Piggy Bank (446 Main Street)".
+ */
+export function findMatchingLocationOption<T extends { name: string }>(
+  locationName: string,
+  options: T[],
+): T | undefined {
+  const normalized = normalizeLocationName(locationName);
+  const exact = options.find((option) => normalizeLocationName(option.name) === normalized);
+  if (exact) return exact;
+
+  const venueName = locationVenueName(locationName);
+  const venueMatch = options.find((option) => locationVenueName(option.name) === venueName);
+  if (venueMatch) return venueMatch;
+
+  return options.find((option) => locationAddress(option.name) === normalized);
+}
+
 /**
  * Retrieves and logs the schema of the Notion database (for debugging purposes)
  */
@@ -262,13 +301,7 @@ export async function postEventsToNotion(events: Event[]): Promise<PostResult> {
       // --- Location Matching ---
       let locationName = event.location;
       if (locationOptions.length > 0) {
-        const matchingLocation = locationOptions.find(
-          (option) =>
-            option.name.toLowerCase().includes(locationName.toLowerCase()) ||
-            locationName
-              .toLowerCase()
-              .includes(option.name.toLowerCase().split(" (")[0])
-        );
+        const matchingLocation = findMatchingLocationOption(locationName, locationOptions);
 
         if (matchingLocation) {
           console.log(

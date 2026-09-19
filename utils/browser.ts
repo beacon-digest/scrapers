@@ -11,7 +11,9 @@ const getLaunchOptions = (): LaunchOptions => {
   // Default options
   const options: LaunchOptions = {
     headless: true, // Keep headless as default
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    // no-user-gesture-required: without it, Chrome won't decode video (e.g.
+    // Instagram Reels) in a headless page that never receives a real click.
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--autoplay-policy=no-user-gesture-required"],
     timeout: 60000, // 60 second timeout
   };
 

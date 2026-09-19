@@ -107,3 +107,29 @@ export const scraper: Scraper = {
 -   **Rate Limiting**: Be mindful of the target server's resources. Avoid overly frequent requests. Implement delays if necessary.
 -   **Use the Shared Browser**: Leverage the `options.browser` instance for performance and resource management.
 -   **Unique `external_id`**: Create a stable and unique `external_id` based on source data to prevent duplicate Notion entries. A good pattern is `<event_id_from_source>@<scraper_id>`. 
+## One-off Sources: Instagram Posts
+
+Not every source deserves a scraper. For a single Instagram post (a venue's
+monthly calendar, or a flyer for one event) use the Instagram runner instead:
+
+```bash
+pnpm instagram "https://www.instagram.com/p/<shortcode>/" --dry-run
+```
+
+It loads the post in headless Chrome (no login needed), sends the caption and
+carousel images to an OpenAI vision model, and turns every dated event it
+finds into `Event` objects that are validated and posted to Notion. Flags:
+
+-   `--dry-run` / `-n`: extract and print, but don't post.
+-   `--fetch-only`: print the caption and image URLs without calling the model (no API key needed).
+-   `--caption-only`: skip the images (cheaper, but misses dates that only appear on the flyer).
+-   Multiple URLs can be passed at once.
+
+It needs `OPENAI_API_KEY` in `.env` alongside the Notion variables. The model
+defaults to `gpt-5.6-luna`, the cheapest GPT-5.6 tier; override it with
+`OPENAI_MODEL` (e.g. `gpt-5.6-terra` or the flagship `gpt-5.6-sol`) if you
+want better extraction quality at a higher cost. The code lives in
+`utils/instagram.ts` (fetching), `utils/event-extractor.ts` (the model call
+and output schema) and `runners/scrape-instagram.ts`.
+Events get `external_id`s of the form `instagram-<shortcode>-<date>-<slug>`,
+so re-running on the same post skips events already in Notion.

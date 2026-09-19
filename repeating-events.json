@@ -195,14 +195,6 @@
     "iconEmoji": "📚"
   },
   {
-    "ruleId": "lyonshare-songswap-open-mic",
-    "title": "The Song Swap Open Mic",
-    "location": "Lyonshare",
-    "time": "18:30",
-    "rrule": "FREQ=WEEKLY;BYDAY=MO",
-    "iconEmoji": "🎵"
-  },
-  {
     "ruleId": "howland-bridge-club",
     "title": "Bridge Club",
     "url": "https://www.howlandculturalcenter.org/the-bridge-club.html",
@@ -239,6 +231,19 @@
     "iconEmoji": "🎤"
   },
   {
+    "ruleId": "industrial-arts-trivia-hangover",
+    "title": "Trivia Hangover",
+    "description": "Have some fun and win some post-brunch prizes playing TRIVIA HANGOVER at Industrial Arts Brewing! Every 4th Sunday of the month at 1pm, hosted by JB from Hudson Valley Trivia. It's award-winning gameshow-style trivia with comedy, prizes, fun and of course craft beers.",
+    "location": "Industrial Arts",
+    "url": "https://hudsonvalleytrivia.com",
+    "time": "13:00",
+    "duration": {
+      "hours": 2
+    },
+    "rrule": "FREQ=MONTHLY;BYDAY=SU;BYSETPOS=4",
+    "iconEmoji": "🗂️"
+  },
+  {
     "ruleId": "mutual-aid-beacon-food-distro-seniors",
     "title": "Mutual Aid Beacon Food Distribution for Seniors",
     "location": "Robert Cahill Drive",
@@ -261,6 +266,19 @@
     },
     "rrule": "FREQ=MONTHLY;BYDAY=WE;BYSETPOS=3",
     "iconEmoji": "🍅"
+  },
+  {
+    "ruleId": "piggy-bank-karaoke",
+    "title": "Karaoke Party",
+    "description": "Presented by Vitamin K Ent. Sign-ups at 8:45pm. Delish BBQ, beers, cocktails — kitchen open till 10:30pm.",
+    "location": "Piggy Bank",
+    "url": "https://www.instagram.com/p/DaauEWrpsYU/",
+    "time": "21:00",
+    "duration": {
+      "hours": 3
+    },
+    "rrule": "FREQ=MONTHLY;BYDAY=FR;BYSETPOS=2",
+    "iconEmoji": "🎤"
   },
   {
     "ruleId": "pillow-oats-trivia",

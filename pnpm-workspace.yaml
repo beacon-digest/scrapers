@@ -1,0 +1,10 @@
+allowBuilds:
+  esbuild: true
+  puppeteer: true
+
+supportedArchitectures:
+  os:
+    - darwin
+  cpu:
+    - arm64
+    - x64
