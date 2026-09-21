@@ -2,7 +2,6 @@ import type { Browser, Page } from "puppeteer";
 import {
   parse as parseDate,
   isWithinInterval,
-  formatISO,
   isValid as isValidDate,
   startOfDay,
   endOfDay,
@@ -12,6 +11,7 @@ import {
   isSameMonth,
   startOfMonth,
 } from "date-fns";
+import { fromZonedTime } from "date-fns-tz";
 
 import type { Event, Scraper, ScrapeOptions } from "../types.js";
 import { formatDate } from "../utils/date.js"; // For logging/errors
@@ -23,6 +23,12 @@ const SCRAPER_ID = "stanza-books";
 const BASE_URL = "https://www.stanzabooks.com";
 const EVENTS_URL = `${BASE_URL}/events`;
 const DEFAULT_LOCATION = "Stanza Books";
+const TIME_ZONE = "America/New_York";
+
+/** Converts a venue wall-clock date/time to the corresponding UTC instant. */
+export function toEasternEventInstant(date: string, time: string): string {
+  return fromZonedTime(`${date} ${time}`, TIME_ZONE).toISOString();
+}
 
 // --- Define Helper Functions in Node Scope ---
 function convert12to24(hour: string, min: string, period: string): string {
@@ -392,30 +398,16 @@ const scrapeStanzaBooksEvents = async (
           location = "Howland Cultural Center";
         }
 
-        // Construct the event object
+        // Stanza's listing times are Eastern wall-clock values, not UTC.
         const eventData: Event = {
           title: title,
           description: description,
-          start_at: formatISO(
-            parseDate(
-              `${dateStr}T${startTime}`,
-              "yyyy-MM-dd'T'HH:mm:ss",
-              new Date()
-            )
-          ),
+          start_at: toEasternEventInstant(dateStr, startTime),
           url: eventUrl,
           location: location,
           external_id: `${SCRAPER_ID}-${eventPath.split("/").pop()}`,
           ...(endTime
-            ? {
-                end_at: formatISO(
-                  parseDate(
-                    `${dateStr}T${endTime}`,
-                    "yyyy-MM-dd'T'HH:mm:ss",
-                    new Date()
-                  )
-                ),
-              }
+            ? { end_at: toEasternEventInstant(dateStr, endTime) }
             : {}),
         };
 

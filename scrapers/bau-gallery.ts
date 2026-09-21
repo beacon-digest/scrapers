@@ -2,12 +2,12 @@ import type { Browser, Page } from "puppeteer";
 import {
   parse as parseDate,
   isWithinInterval,
-  formatISO,
   isValid as isValidDate,
   startOfDay,
   endOfDay,
   format as formatDateFn,
 } from "date-fns";
+import { fromZonedTime } from "date-fns-tz";
 
 import type { Event, Scraper, ScrapeOptions } from "../types.js";
 import { logEventFound } from "../utils/logging.js";
@@ -20,6 +20,11 @@ const BASE_URL = "https://www.baugallery.org";
 const EVENTS_URL = `${BASE_URL}/eventscurrent`;
 const DEFAULT_LOCATION = "BAU Gallery";
 const TIME_ZONE = "America/New_York";
+
+/** Converts a venue wall-clock date/time to the corresponding UTC instant. */
+export function toEasternEventInstant(date: string, time: string): string {
+  return fromZonedTime(`${date} ${time}`, TIME_ZONE).toISOString();
+}
 
 function convert12to24(hour: string, min: string, period: string): string {
   let h = Number.parseInt(hour, 10);
@@ -239,21 +244,14 @@ const scrapeBauGalleryEvents = async (
         const finalStartTime = startTime || defaultStartTime;
         const finalEndTime = endTime || defaultEndTime;
 
-        // Create ISO date strings
-        const startAt = formatISO(
-          parseDate(
-            `${formatDateFn(eventStartDate, "yyyy-MM-dd")}T${finalStartTime}`,
-            "yyyy-MM-dd'T'HH:mm:ss",
-            new Date()
-          )
+        // Gallery times are Eastern wall-clock values, not UTC timestamps.
+        const startAt = toEasternEventInstant(
+          formatDateFn(eventStartDate, "yyyy-MM-dd"),
+          finalStartTime,
         );
-
-        const endAt = formatISO(
-          parseDate(
-            `${formatDateFn(eventEndDate, "yyyy-MM-dd")}T${finalEndTime}`,
-            "yyyy-MM-dd'T'HH:mm:ss",
-            new Date()
-          )
+        const endAt = toEasternEventInstant(
+          formatDateFn(eventEndDate, "yyyy-MM-dd"),
+          finalEndTime,
         );
 
         // Create external ID from title
