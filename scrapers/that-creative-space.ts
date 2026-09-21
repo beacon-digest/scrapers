@@ -2,12 +2,12 @@ import type { Browser, Page } from "puppeteer";
 import {
   parse as parseDate,
   isWithinInterval,
-  formatISO,
   isValid as isValidDate,
   startOfDay,
   endOfDay,
   format as formatDateFn,
 } from "date-fns";
+import { fromZonedTime } from "date-fns-tz";
 
 import type { Event, Scraper, ScrapeOptions } from "../types.js";
 import { logEventFound } from "../utils/logging.js";
@@ -19,6 +19,12 @@ const SCRAPER_ID = "that-creative-space";
 const BASE_URL = "https://www.thatcreativespace.org";
 const EVENTS_URL = "https://app.getoccasion.com/p/stacks/7903/15996";
 const DEFAULT_LOCATION = "That Creative Space";
+const TIME_ZONE = "America/New_York";
+
+/** Converts a venue wall-clock date/time to the corresponding UTC instant. */
+export function toEasternEventInstant(date: string, time: string): string {
+  return fromZonedTime(`${date} ${time}`, TIME_ZONE).toISOString();
+}
 
 function convert12to24(hour: string, min: string, period: string): string {
   let h = Number.parseInt(hour, 10);
@@ -371,24 +377,14 @@ const scrapeThatCreativeSpaceEvents = async (
           description = description.trim();
         }
 
-        // Create ISO date strings
-        const startAt = formatISO(
-          parseDate(
-            `${formatDateFn(eventDate, "yyyy-MM-dd")}T${startTime}`,
-            "yyyy-MM-dd'T'HH:mm:ss",
-            new Date()
-          )
-        );
+        // Occasion shows venue-local wall-clock times. Convert them explicitly
+        // from Eastern time so Notion renders the same time rather than UTC.
+        const eventDateString = formatDateFn(eventDate, "yyyy-MM-dd");
+        const startAt = toEasternEventInstant(eventDateString, startTime);
 
         let endAt: string | undefined;
         if (endTime) {
-          endAt = formatISO(
-            parseDate(
-              `${formatDateFn(eventDate, "yyyy-MM-dd")}T${endTime}`,
-              "yyyy-MM-dd'T'HH:mm:ss",
-              new Date()
-            )
-          );
+          endAt = toEasternEventInstant(eventDateString, endTime);
         }
 
         // Create external ID from title and date
