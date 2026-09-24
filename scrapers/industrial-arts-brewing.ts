@@ -252,7 +252,7 @@ async function scrapeIndustrialArtsBrewingEvents(
       // Additional wait for events to appear - either by class or by typical event element pattern
       await page.waitForFunction(
         () => {
-          return document.querySelector('#mahina-app')?.querySelectorAll('div[class*="event"], div > h3')?.length > 0;
+          return (document.querySelector('#mahina-app')?.querySelectorAll('div[class*="event"], div > h3').length ?? 0) > 0;
         },
         { timeout: 30000 }
       );

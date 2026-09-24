@@ -191,7 +191,7 @@ function getMonthNumber(monthName: string): string {
     feb: "02",
     mar: "03",
     apr: "04",
-    may: "05", // Ensure "may" is handled in both forms
+
     jun: "06",
     jul: "07",
     aug: "08",
@@ -651,7 +651,7 @@ async function scrapeBeaconGovernmentEvents(
 
         if (allDayEvent && date) {
           // Set start to beginning of day
-          finalStartAt = combineToISOString(date, "00:00:00");
+          finalStartAt = combineToISOString(date, "00:00:00") ?? startAtIso;
 
           // Set end to end of day if not specified
           if (!endAtIso) {

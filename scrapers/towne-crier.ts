@@ -293,7 +293,7 @@ async function scrapeTowneCrierStage(options: ScrapeOptions, stagePath: string, 
         }
       } else {
         console.warn(
-          `[${SCRAPER_ID}] Event ${rawEvent.title} has no URL, cannot fetch full description.`
+          `[${scraperId}] Event ${rawEvent.title} has no URL, cannot fetch full description.`
         );
       }
 
@@ -332,7 +332,7 @@ async function scrapeTowneCrierStage(options: ScrapeOptions, stagePath: string, 
     );
     return validationResult.data;
   } catch (error) {
-    console.error(`[${SCRAPER_ID}] Error scraping Towne Crier:`, error);
+    console.error(`[${scraperId}] Error scraping Towne Crier:`, error);
     return []; // Return empty array on major error during scraping
   } finally {
     // Ensure the Puppeteer page is closed even if errors occurred

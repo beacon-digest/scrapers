@@ -1,10 +1,8 @@
 import type * as puppeteer from "puppeteer";
 // Import the specific type if possible, otherwise use string and cast later
-import type { EmojiRequest } from "@notionhq/client/build/src/api-endpoints";
-
 // Structure matching Notion API's icon object
 export type NotionIcon =
-  | { type: "emoji"; emoji: EmojiRequest }
+  | { type: "emoji"; emoji: string }
   | { type: "external"; external: { url: string } };
 
 export interface Event {
