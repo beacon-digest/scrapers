@@ -24,19 +24,6 @@
     "iconEmoji": "🗂️"
   },
   {
-    "ruleId": "beacon-backyard-free-breakfast",
-    "title": "Free Breakfast for Anyone in Need",
-    "description": "Free breakfast provided by Beacon's Backyard.",
-    "location": "12 Hanna Lane",
-    "url": "https://linktr.ee/beaconsbackyard",
-    "time": "06:30",
-    "duration": {
-      "hours": 4
-    },
-    "rrule": "FREQ=WEEKLY;BYDAY=WE,TH",
-    "iconEmoji": "🍳"
-  },
-  {
     "ruleId": "beacon-bike-group-ride",
     "title": "Group Bike Ride & Drinks",
     "description": "Join us for a friendly monthly group ride. Casual rides, all levels of bicyclists are welcome. Rides vary in length and difficulty — some are a slow, easy tour of town with kiddos in tow, where we stop to share our dreams and vision for bike-friendly roads in Beacon, others are longer, faster rides across the river to Newburgh or beyond. Check our Instagram, where we post route plans the week before.",
