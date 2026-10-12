@@ -3,19 +3,15 @@ import {
   parse,
   format,
   isValid,
-  isWithinInterval,
-  startOfDay,
-  endOfDay,
-  formatISO,
   parseISO,
 } from "date-fns";
-import { formatInTimeZone } from "date-fns-tz";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { EventsArraySchema } from "../utils/validation.js";
 import { formatDate } from "../utils/date.js"; // Assuming a helper like this exists
 import { convertHtmlToMarkdown } from "../utils/markdown.js";
 import { logEventFound } from "../utils/logging.js";
 
-// Define the timezone for Beacon, NY - Used for context, not direct date-fns-tz usage
+// Towne Crier publishes wall-clock times in Beacon's local timezone.
 const TIMEZONE = "America/New_York";
 
 // Interface for raw data extracted within page.evaluate
@@ -50,7 +46,7 @@ function pad(num: number): string {
 }
 
 // Helper to convert parsed date/time parts to an ISO string in UTC
-function convertToISO(
+export function convertToISO(
   datePart?: string,
   timePart?: string
 ): string | undefined {
@@ -68,30 +64,25 @@ function convertToISO(
   if (!combinedString) return undefined;
 
   try {
-    const referenceDate = new Date();
-    // 1. Parse the original string
-    const parsedDate = parse(combinedString, formatString, referenceDate);
+    // Parse and re-format in the host zone only to normalize the source text
+    // into a zone-less wall-clock string. Do not treat that parsed Date as an
+    // instant: the published time is in America/New_York regardless of the
+    // host timezone.
+    const parsedDate = parse(combinedString, formatString, new Date());
 
     if (!isValid(parsedDate)) {
       return undefined;
     }
 
-    // 2. Format using NY timezone to get ISO string with correct offset
-    const nyIsoWithOffset = formatInTimeZone(
-      parsedDate,
-      TIMEZONE,
-      "yyyy-MM-dd'T'HH:mm:ssXXX" // Format includes offset
-    );
-
-    // 3. Parse *that* string to get the correct UTC Date object
-    const utcDate = parseISO(nyIsoWithOffset);
+    const wallTime = format(parsedDate, "yyyy-MM-dd'T'HH:mm:ss");
+    const utcDate = fromZonedTime(wallTime, TIMEZONE);
 
     if (!isValid(utcDate)) {
       return undefined;
     }
 
-    // 4. Manually construct the final ISO string with '.000Z' from the UTC Date object
-    //    to match the validation regex requirement.
+    // Manually construct the final ISO string with '.000Z' to match the
+    // validation regex requirement.
     const year = utcDate.getUTCFullYear();
     const month = pad(utcDate.getUTCMonth() + 1); // Months are 0-indexed
     const day = pad(utcDate.getUTCDate());
@@ -115,11 +106,8 @@ async function scrapeTowneCrierStage(options: ScrapeOptions, stagePath: string, 
   const url = "https://townecrier.com" + stagePath;
   const events: Event[] = [];
   const endDateOrStartDate = endDate ?? startDate;
-  // Define the interval once before the loop
-  const interval = {
-    start: startOfDay(startDate),
-    end: endOfDay(endDateOrStartDate),
-  };
+  const startDateKey = formatInTimeZone(startDate, TIMEZONE, "yyyy-MM-dd");
+  const endDateKey = formatInTimeZone(endDateOrStartDate, TIMEZONE, "yyyy-MM-dd");
 
   console.log(
     `[${scraperId}] Scraping Towne Crier from ${formatDate(
@@ -234,7 +222,8 @@ async function scrapeTowneCrierStage(options: ScrapeOptions, stagePath: string, 
         continue;
       }
 
-      if (!isWithinInterval(eventStartDate, interval)) {
+      const eventDateKey = formatInTimeZone(eventStartDate, TIMEZONE, "yyyy-MM-dd");
+      if (eventDateKey < startDateKey || eventDateKey > endDateKey) {
         // Optional logging for skipped events outside the date range
         // console.log(`[${SCRAPER_ID}] Skipping event outside date range: ${rawEvent.title} (${formatDate(eventStartDate)})`);
         continue; // Skip this event entirely, no need to fetch details
