@@ -17,17 +17,19 @@ const DEFAULT_MODEL = process.env.DUPLICATE_AUDIT_MODEL || "gpt-4o-mini";
 const DEFAULT_LOOKBACK_DAYS = 7;
 const DEFAULT_LOOKAHEAD_DAYS = 120;
 
-function loadDotEnv(path = resolve(process.cwd(), ".env")) {
+export function loadDotEnv(path = resolve(process.cwd(), ".env")) {
   if (!existsSync(path)) return;
   for (const rawLine of readFileSync(path, "utf8").split(/\r?\n/)) {
     const line = rawLine.trim();
     if (!line || line.startsWith("#")) continue;
     const match = line.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
-    if (!match || process.env[match[1]]) continue;
+    if (!match) continue;
     let value = match[2].trim();
     if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1);
     }
+    // This repository's local `.env` is the explicit runtime configuration for
+    // the audit. It must take precedence over a stale inherited environment.
     process.env[match[1]] = value;
   }
 }
