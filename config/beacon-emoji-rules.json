@@ -1,0 +1,1191 @@
+{
+  "version": 1,
+  "source_window": {
+    "from": "2026-07-17",
+    "through": "2026-10-25",
+    "published_events": 1246
+  },
+  "default_emoji": "📅",
+  "rules": [
+    {
+      "priority": 1,
+      "emoji": "🎵",
+      "when": "Music events",
+      "examples": [
+        "Cosmokaze",
+        "Tina Ross",
+        "Music on the Lawn"
+      ]
+    },
+    {
+      "priority": 2,
+      "emoji": "🗂️",
+      "when": "Trivia events",
+      "examples": [
+        "Trivia Night",
+        "Geeks Who Drink Trivia"
+      ]
+    },
+    {
+      "priority": 3,
+      "emoji": "🎤",
+      "when": "Karaoke or Open Mic events",
+      "examples": [
+        "Karaoke for a Cause",
+        "Open Mic Night"
+      ]
+    },
+    {
+      "priority": 4,
+      "emoji": "📚",
+      "when": "Book clubs or literary events",
+      "examples": [
+        "Sci-Fi book club",
+        "Wednesday Book Club"
+      ]
+    },
+    {
+      "priority": 5,
+      "emoji": "🧙",
+      "when": "Magic the Gathering events",
+      "examples": [
+        "Kid’s Magic the Gathering",
+        "Magic the Gathering Draft"
+      ]
+    },
+    {
+      "priority": 6,
+      "emoji": "🧒",
+      "when": "Children's events",
+      "examples": [
+        "Pajama Storytime",
+        "Kind Creators"
+      ]
+    },
+    {
+      "priority": 7,
+      "emoji": "😆",
+      "when": "Comedy events",
+      "examples": [
+        "Brew Ha-Ha Comedy Showcase",
+        "Comedy Night"
+      ]
+    },
+    {
+      "priority": 8,
+      "emoji": "🍳",
+      "when": "Food-related events",
+      "examples": [
+        "Free Breakfast for Anyone in Need"
+      ]
+    },
+    {
+      "priority": 9,
+      "emoji": "♟️",
+      "when": "Game clubs",
+      "examples": [
+        "Beacon Chess Club",
+        "Drop-In Game Club"
+      ]
+    },
+    {
+      "priority": 10,
+      "emoji": "💬",
+      "when": "Classes or workshops",
+      "examples": [
+        "BOCES Class"
+      ]
+    },
+    {
+      "priority": 11,
+      "emoji": "🧶",
+      "when": "Fiber arts or crafting events",
+      "examples": [
+        "Fiber Arts Circle"
+      ]
+    },
+    {
+      "priority": 12,
+      "emoji": "💃",
+      "when": "Dance events",
+      "examples": [
+        "Drag Show",
+        "Salsa Sunday"
+      ]
+    },
+    {
+      "priority": 13,
+      "emoji": "🎥",
+      "when": "Movie screenings",
+      "examples": [
+        "Grease Movie Screening",
+        "Movie Night"
+      ]
+    },
+    {
+      "priority": 14,
+      "emoji": "✏️",
+      "when": "Writing workshops",
+      "examples": [
+        "Write Today Beacon"
+      ]
+    },
+    {
+      "priority": 15,
+      "emoji": "🖼️",
+      "when": "Art exhibitions or receptions",
+      "examples": [
+        "Artist Reception",
+        "Curator-led Tour"
+      ]
+    },
+    {
+      "priority": 16,
+      "emoji": "🍽️",
+      "when": "Food distribution events",
+      "examples": [
+        "Fareground Welcome Table"
+      ]
+    },
+    {
+      "priority": 17,
+      "emoji": "🕹️",
+      "when": "Gaming tournaments",
+      "examples": [
+        "Killer Queen Tournament"
+      ]
+    },
+    {
+      "priority": 18,
+      "emoji": "🀄",
+      "when": "Mahjong events",
+      "examples": [
+        "Monday Beginner Mah Jongg"
+      ]
+    },
+    {
+      "priority": 19,
+      "emoji": "👶",
+      "when": "Early childhood events",
+      "examples": [
+        "Communication & Sensory Playgroup"
+      ]
+    },
+    {
+      "priority": 20,
+      "emoji": "🧑‍🌾",
+      "when": "Farmers' market events",
+      "examples": [
+        "Beacon Farmers' Market"
+      ]
+    },
+    {
+      "priority": 21,
+      "emoji": "🥏",
+      "when": "Disc golf events",
+      "examples": [
+        "Beacon Glades Disc Golf Sunday Doubles"
+      ]
+    },
+    {
+      "priority": 22,
+      "emoji": "🃏",
+      "when": "Bridge club events",
+      "examples": [
+        "Bridge Club"
+      ]
+    },
+    {
+      "priority": 23,
+      "emoji": "🏃",
+      "when": "Running events",
+      "examples": [
+        "Beacon Endurance Beer Run/Walk"
+      ]
+    },
+    {
+      "priority": 24,
+      "emoji": "⚔️",
+      "when": "Dungeons & Dragons events",
+      "examples": [
+        "Dungeons & Dragons"
+      ]
+    },
+    {
+      "priority": 25,
+      "emoji": "🧑‍🎨",
+      "when": "Art talks or critiques",
+      "examples": [
+        "Artist Talk"
+      ]
+    },
+    {
+      "priority": 26,
+      "emoji": "🎨",
+      "when": "Art workshops",
+      "examples": [
+        "Hobby Night"
+      ]
+    },
+    {
+      "priority": 27,
+      "emoji": "🎭",
+      "when": "Theater or performance events",
+      "examples": [
+        "Black Curtain Society"
+      ]
+    },
+    {
+      "priority": 28,
+      "emoji": "🎲",
+      "when": "Board game events",
+      "examples": [
+        "Drop-In Game Club"
+      ]
+    },
+    {
+      "priority": 29,
+      "emoji": "🧀",
+      "when": "Cheese-making classes",
+      "examples": [
+        "Ricotta Making Class"
+      ]
+    },
+    {
+      "priority": 30,
+      "emoji": "🕺",
+      "when": "Dance parties",
+      "examples": [
+        "Savage Soirée"
+      ]
+    },
+    {
+      "priority": 31,
+      "emoji": "🖌️",
+      "when": "Painting workshops",
+      "examples": [
+        "Georgia O’Keeffe Workshop"
+      ]
+    },
+    {
+      "priority": 32,
+      "emoji": "🐉",
+      "when": "Kids D&D events",
+      "examples": [
+        "Kids D&D"
+      ]
+    },
+    {
+      "priority": 33,
+      "emoji": "🤝",
+      "when": "Community meetings",
+      "examples": [
+        "City Council Meeting"
+      ]
+    },
+    {
+      "priority": 34,
+      "emoji": "🪡",
+      "when": "Sewing classes",
+      "examples": [
+        "Embroidered Cards"
+      ]
+    },
+    {
+      "priority": 35,
+      "emoji": "📸",
+      "when": "Photography events",
+      "examples": [
+        "Headshot Sessions"
+      ]
+    },
+    {
+      "priority": 36,
+      "emoji": "🎸",
+      "when": "Music tribute events",
+      "examples": [
+        "LOTUS Santana Tribute"
+      ]
+    },
+    {
+      "priority": 37,
+      "emoji": "🎮",
+      "when": "Video game tournaments",
+      "examples": [
+        "Super Smash Bros Tournament"
+      ]
+    },
+    {
+      "priority": 38,
+      "emoji": "🌈",
+      "when": "LGBTQ+ events",
+      "examples": [
+        "Queer Speed Friending"
+      ]
+    },
+    {
+      "priority": 39,
+      "emoji": "🦸",
+      "when": "Comics events",
+      "examples": [
+        "Comics Club"
+      ]
+    },
+    {
+      "priority": 40,
+      "emoji": "🪩",
+      "when": "Dance music events",
+      "examples": [
+        "Italo Disco Nite"
+      ]
+    },
+    {
+      "priority": 41,
+      "emoji": "🍅",
+      "when": "Food distribution events",
+      "examples": [
+        "Mutual Aid Beacon Food Distribution"
+      ]
+    },
+    {
+      "priority": 42,
+      "emoji": "🦖",
+      "when": "Dinosaur-themed events",
+      "examples": [
+        "T-Rex Tea Party"
+      ]
+    },
+    {
+      "priority": 43,
+      "emoji": "🏆",
+      "when": "Tournaments",
+      "examples": [
+        "Pinball Tournament"
+      ]
+    },
+    {
+      "priority": 44,
+      "emoji": "🤫",
+      "when": "Silent events",
+      "examples": [
+        "Silent Book Club"
+      ]
+    },
+    {
+      "priority": 45,
+      "emoji": "✂️",
+      "when": "Collage or zine events",
+      "examples": [
+        "Collage Meetup"
+      ]
+    },
+    {
+      "priority": 46,
+      "emoji": "👻",
+      "when": "Halloween events",
+      "examples": [
+        "Hocus Pocus Parade Day"
+      ]
+    },
+    {
+      "priority": 47,
+      "emoji": "🎃",
+      "when": "Pumpkin-related events",
+      "examples": [
+        "Beacon Sloop Pumpkin Festival"
+      ]
+    },
+    {
+      "priority": 48,
+      "emoji": "🧟",
+      "when": "Zombie-themed events",
+      "examples": [
+        "Cirque du Creep"
+      ]
+    },
+    {
+      "priority": 49,
+      "emoji": "❓",
+      "when": "Trivia events",
+      "examples": [
+        "Trivia Hangover"
+      ]
+    },
+    {
+      "priority": 50,
+      "emoji": "🧑‍🚒",
+      "when": "Fire department workshops",
+      "examples": [
+        "Glenham Fire Department Community Workshop"
+      ]
+    },
+    {
+      "priority": 51,
+      "emoji": "🚴",
+      "when": "Bike rides",
+      "examples": [
+        "Group Bike Ride & Drinks"
+      ]
+    },
+    {
+      "priority": 52,
+      "emoji": "🎷",
+      "when": "Jazz events",
+      "examples": [
+        "Jazz Jam Monday"
+      ]
+    },
+    {
+      "priority": 53,
+      "emoji": "💻",
+      "when": "Coding bootcamps",
+      "examples": [
+        "Coding Bootcamp"
+      ]
+    },
+    {
+      "priority": 54,
+      "emoji": "🏳️‍🌈",
+      "when": "LGBTQ+ events",
+      "examples": [
+        "Hot Gays Walk"
+      ]
+    },
+    {
+      "priority": 55,
+      "emoji": "🎻",
+      "when": "Fiddle tune jams",
+      "examples": [
+        "Southern Fiddle Tune Jam"
+      ]
+    },
+    {
+      "priority": 56,
+      "emoji": "🎬",
+      "when": "Movie trivia events",
+      "examples": [
+        "Story Screen Movie Trivia"
+      ]
+    },
+    {
+      "priority": 57,
+      "emoji": "🏗️",
+      "when": "Planning meetings",
+      "examples": [
+        "Zoning Board of Appeals Meeting"
+      ]
+    },
+    {
+      "priority": 58,
+      "emoji": "🎉",
+      "when": "Anniversary parties",
+      "examples": [
+        "Industrial Arts 10th Anniversary Party"
+      ]
+    },
+    {
+      "priority": 59,
+      "emoji": "🧘",
+      "when": "Meditation events",
+      "examples": [
+        "Kadampa Meditation"
+      ]
+    }
+  ],
+  "notes": [
+    "Existing manually assigned event icons remain unchanged.",
+    "Default emoji is used for uncategorized events."
+  ],
+  "series_rules": [
+    {
+      "prefix": "trivia night",
+      "emoji": "🗂️",
+      "count": 60,
+      "examples": [
+        "Trivia Night",
+        "Trivia Night",
+        "Trivia Night",
+        "Trivia Night"
+      ]
+    },
+    {
+      "prefix": "free breakfast for anyone in need",
+      "emoji": "🍳",
+      "count": 29,
+      "examples": [
+        "Free Breakfast for Anyone in Need",
+        "Free Breakfast for Anyone in Need",
+        "Free Breakfast for Anyone in Need",
+        "Free Breakfast for Anyone in Need"
+      ]
+    },
+    {
+      "prefix": "karaoke night",
+      "emoji": "🎤",
+      "count": 19,
+      "examples": [
+        "Karaoke Night",
+        "Karaoke Night",
+        "Karaoke Night",
+        "Karaoke Night"
+      ]
+    },
+    {
+      "prefix": "drag show",
+      "emoji": "💃",
+      "count": 16,
+      "examples": [
+        "Drag Show",
+        "Drag Show",
+        "Drag Show",
+        "Drag Show"
+      ]
+    },
+    {
+      "prefix": "fareground welcome table",
+      "emoji": "🍽️",
+      "count": 16,
+      "examples": [
+        "Fareground Welcome Table",
+        "Fareground Welcome Table",
+        "Fareground Welcome Table",
+        "Fareground Welcome Table"
+      ]
+    },
+    {
+      "prefix": "play sets",
+      "emoji": "🧒",
+      "count": 16,
+      "examples": [
+        "Play Sets: Tehching Hsieh",
+        "Play Sets: John Chamberlain",
+        "Play Sets: Hélio Oiticica",
+        "Play Sets: Alighiero Boetti"
+      ]
+    },
+    {
+      "prefix": "beacon chess club",
+      "emoji": "♟️",
+      "count": 15,
+      "examples": [
+        "Beacon Chess Club",
+        "Beacon Chess Club",
+        "Beacon Chess Club",
+        "Beacon Chess Club"
+      ]
+    },
+    {
+      "prefix": "beacon endurance beer run walk",
+      "emoji": "🏃",
+      "count": 15,
+      "examples": [
+        "Beacon Endurance Beer Run/Walk",
+        "Beacon Endurance Beer Run/Walk",
+        "Beacon Endurance Beer Run/Walk",
+        "Beacon Endurance Beer Run/Walk"
+      ]
+    },
+    {
+      "prefix": "beacon farmers market",
+      "emoji": "🧑‍🌾",
+      "count": 15,
+      "examples": [
+        "Beacon Farmers' Market",
+        "Beacon Farmers' Market",
+        "Beacon Farmers' Market",
+        "Beacon Farmers' Market"
+      ]
+    },
+    {
+      "prefix": "beacon glades disc golf sunday doubles",
+      "emoji": "🥏",
+      "count": 15,
+      "examples": [
+        "Beacon Glades Disc Golf Sunday Doubles",
+        "Beacon Glades Disc Golf Sunday Doubles",
+        "Beacon Glades Disc Golf Sunday Doubles",
+        "Beacon Glades Disc Golf Sunday Doubles"
+      ]
+    },
+    {
+      "prefix": "bridge club",
+      "emoji": "🃏",
+      "count": 15,
+      "examples": [
+        "Bridge Club",
+        "Bridge Club",
+        "Bridge Club",
+        "Bridge Club"
+      ]
+    },
+    {
+      "prefix": "comedy night",
+      "emoji": "😆",
+      "count": 15,
+      "examples": [
+        "Comedy Night",
+        "Comedy Night",
+        "Comedy Night",
+        "Comedy Night"
+      ]
+    },
+    {
+      "prefix": "fiber arts circle",
+      "emoji": "🧶",
+      "count": 15,
+      "examples": [
+        "Fiber Arts Circle",
+        "Fiber Arts Circle",
+        "Fiber Arts Circle",
+        "Fiber Arts Circle"
+      ]
+    },
+    {
+      "prefix": "killer queen weekly meetup",
+      "emoji": "🕹️",
+      "count": 15,
+      "examples": [
+        "Killer Queen Weekly Meetup",
+        "Killer Queen Weekly Meetup",
+        "Killer Queen Weekly Meetup",
+        "Killer Queen Weekly Meetup"
+      ]
+    },
+    {
+      "prefix": "open mic night",
+      "emoji": "🎤",
+      "count": 15,
+      "examples": [
+        "Open Mic Night",
+        "Open Mic Night",
+        "Open Mic Night",
+        "Open Mic Night"
+      ]
+    },
+    {
+      "prefix": "casual magic commander",
+      "emoji": "🧙",
+      "count": 12,
+      "examples": [
+        "Casual Magic Commander",
+        "Casual Magic Commander",
+        "Casual Magic Commander",
+        "Casual Magic Commander"
+      ]
+    },
+    {
+      "prefix": "the everything jam",
+      "emoji": "🎵",
+      "count": 10,
+      "examples": [
+        "The Everything Jam",
+        "The Everything Jam",
+        "The Everything Jam",
+        "The Everything Jam"
+      ]
+    },
+    {
+      "prefix": "the song swap open mic",
+      "emoji": "🎵",
+      "count": 10,
+      "examples": [
+        "The Song Swap Open Mic",
+        "The Song Swap Open Mic",
+        "The Song Swap Open Mic",
+        "The Song Swap Open Mic"
+      ]
+    },
+    {
+      "prefix": "thursday night d d",
+      "emoji": "⚔️",
+      "count": 10,
+      "examples": [
+        "Thursday Night D&D",
+        "Thursday Night D&D",
+        "Thursday Night D&D",
+        "Thursday Night D&D"
+      ]
+    },
+    {
+      "prefix": "casual magic the gathering commander",
+      "emoji": "🧙",
+      "count": 9,
+      "examples": [
+        "Casual Magic the Gathering Commander",
+        "Casual Magic the Gathering Commander",
+        "Casual Magic the Gathering Commander",
+        "Casual Magic the Gathering Commander"
+      ]
+    },
+    {
+      "prefix": "kids magic the gathering",
+      "emoji": "🧙",
+      "count": 9,
+      "examples": [
+        "Kid’s Magic the Gathering",
+        "Kid’s Magic the Gathering",
+        "Kid’s Magic the Gathering",
+        "Kid’s Magic the Gathering"
+      ]
+    },
+    {
+      "prefix": "magic the gathering casual commander",
+      "emoji": "🧙",
+      "count": 8,
+      "examples": [
+        "Magic the Gathering Casual Commander",
+        "Magic the Gathering Casual Commander",
+        "Magic the Gathering Casual Commander",
+        "Magic the Gathering Casual Commander"
+      ]
+    },
+    {
+      "prefix": "monday mah jongg",
+      "emoji": "🀄",
+      "count": 8,
+      "examples": [
+        "Monday Mah Jongg",
+        "Monday Mah Jongg",
+        "Monday Mah Jongg",
+        "Monday Mah Jongg"
+      ]
+    },
+    {
+      "prefix": "kids d d",
+      "emoji": "🐉",
+      "count": 7,
+      "examples": [
+        "Kids D&D",
+        "Kids D&D",
+        "Kids D&D",
+        "Kids D&D"
+      ]
+    },
+    {
+      "prefix": "the savage wonder improv jam",
+      "emoji": "😆",
+      "count": 7,
+      "examples": [
+        "The Savage Wonder Improv JAM!",
+        "The Savage Wonder Improv JAM!",
+        "The Savage Wonder Improv JAM!",
+        "The Savage Wonder Improv JAM!"
+      ]
+    },
+    {
+      "prefix": "write today beacon",
+      "emoji": "✏️",
+      "count": 7,
+      "examples": [
+        "Write Today Beacon",
+        "Write Today Beacon",
+        "Write Today Beacon",
+        "Write Today Beacon"
+      ]
+    },
+    {
+      "prefix": "chess club for grades k",
+      "emoji": "♟️",
+      "count": 6,
+      "examples": [
+        "Chess Club (For Grades K-12)",
+        "Chess Club (For Grades K-12)",
+        "Chess Club (For Grades K-12)",
+        "Chess Club (For Grades K-12)"
+      ]
+    },
+    {
+      "prefix": "hobby night",
+      "emoji": "🎨",
+      "count": 6,
+      "examples": [
+        "Hobby Night",
+        "Hobby Night",
+        "Hobby Night",
+        "Hobby Night"
+      ]
+    },
+    {
+      "prefix": "monday beginner mah jongg",
+      "emoji": "🀄",
+      "count": 6,
+      "examples": [
+        "Monday Beginner Mah Jongg",
+        "Monday Beginner Mah Jongg",
+        "Monday Beginner Mah Jongg",
+        "Monday Beginner Mah Jongg"
+      ]
+    },
+    {
+      "prefix": "city council meeting",
+      "emoji": "🤝",
+      "count": 5,
+      "examples": [
+        "City Council Meeting",
+        "City Council Meeting",
+        "City Council Meeting",
+        "City Council Meeting"
+      ]
+    },
+    {
+      "prefix": "board games beer",
+      "emoji": "🎲",
+      "count": 4,
+      "examples": [
+        "Board Games & Beer",
+        "Board Games & Beer",
+        "Board Games & Beer",
+        "Board Games & Beer"
+      ]
+    },
+    {
+      "prefix": "comics club",
+      "emoji": "🦸",
+      "count": 4,
+      "examples": [
+        "Comics Club",
+        "COMICS club",
+        "COMICS club",
+        "Comics Club"
+      ]
+    },
+    {
+      "prefix": "glenham fire department community workshop",
+      "emoji": "🧑‍🚒",
+      "count": 4,
+      "examples": [
+        "Glenham Fire Department Community Workshop",
+        "Glenham Fire Department Community Workshop",
+        "Glenham Fire Department Community Workshop",
+        "Glenham Fire Department Community Workshop"
+      ]
+    },
+    {
+      "prefix": "group bike ride drinks",
+      "emoji": "🚴",
+      "count": 4,
+      "examples": [
+        "Group Bike Ride & Drinks",
+        "Group Bike Ride & Drinks",
+        "Group Bike Ride & Drinks",
+        "Group Bike Ride & Drinks"
+      ]
+    },
+    {
+      "prefix": "karaoke",
+      "emoji": "🎤",
+      "count": 4,
+      "examples": [
+        "Karaoke",
+        "Karaoke",
+        "Karaoke",
+        "Karaoke"
+      ]
+    },
+    {
+      "prefix": "nopen mic",
+      "emoji": "🎤",
+      "count": 4,
+      "examples": [
+        "NOPEn MIC",
+        "NOPEn MIC",
+        "NOPEn MIC",
+        "NOPEn MIC"
+      ]
+    },
+    {
+      "prefix": "southern fiddle tune jam",
+      "emoji": "🎻",
+      "count": 4,
+      "examples": [
+        "Southern Fiddle Tune Jam",
+        "Southern Fiddle Tune Jam",
+        "Southern Fiddle Tune Jam",
+        "Southern Fiddle Tune Jam"
+      ]
+    },
+    {
+      "prefix": "story screen movie trivia",
+      "emoji": "🎬",
+      "count": 4,
+      "examples": [
+        "Story Screen Movie Trivia",
+        "Story Screen Movie Trivia",
+        "Story Screen Movie Trivia",
+        "Story Screen Movie Trivia"
+      ]
+    },
+    {
+      "prefix": "super smash bros tournament",
+      "emoji": "🎮",
+      "count": 4,
+      "examples": [
+        "Super Smash Bros Tournament",
+        "Super Smash Bros Tournament",
+        "Super Smash Bros Tournament",
+        "Super Smash Bros Tournament"
+      ]
+    },
+    {
+      "prefix": "wednesday book club",
+      "emoji": "📚",
+      "count": 4,
+      "examples": [
+        "Wednesday Book Club",
+        "Wednesday Book Club",
+        "Wednesday Book Club",
+        "Wednesday Book Club"
+      ]
+    },
+    {
+      "prefix": "a night with the 447s",
+      "emoji": "🎵",
+      "count": 3,
+      "examples": [
+        "A Night with The 447's",
+        "A Night with The 447's",
+        "A Night with The 447's"
+      ]
+    },
+    {
+      "prefix": "awkward silence",
+      "emoji": "🎵",
+      "count": 3,
+      "examples": [
+        "Awkward Silence",
+        "Awkward Silence",
+        "Awkward Silence"
+      ]
+    },
+    {
+      "prefix": "brunch with east coast jazz",
+      "emoji": "🎵",
+      "count": 3,
+      "examples": [
+        "Brunch with East Coast Jazz",
+        "Brunch with East Coast Jazz",
+        "Brunch with East Coast Jazz"
+      ]
+    },
+    {
+      "prefix": "brunch with marji zintz mike larocco",
+      "emoji": "🎵",
+      "count": 3,
+      "examples": [
+        "Brunch with Marji Zintz & Mike LaRocco",
+        "Brunch with Marji Zintz & Mike LaRocco",
+        "Brunch with Marji Zintz & Mike LaRocco"
+      ]
+    },
+    {
+      "prefix": "club draw",
+      "emoji": "🧑‍🎨",
+      "count": 3,
+      "examples": [
+        "Club Draw",
+        "Club Draw",
+        "Club Draw"
+      ]
+    },
+    {
+      "prefix": "collage meetup",
+      "emoji": "✂️",
+      "count": 3,
+      "examples": [
+        "Collage Meetup (Adults) ",
+        "Collage Meetup (Adults) ",
+        "Collage Meetup (Adults) "
+      ]
+    },
+    {
+      "prefix": "dance independent",
+      "emoji": "🕺",
+      "count": 3,
+      "examples": [
+        "Dance Independent",
+        "Dance Independent",
+        "Dance Independent"
+      ]
+    },
+    {
+      "prefix": "dark fiction book club",
+      "emoji": "📚",
+      "count": 3,
+      "examples": [
+        "Dark Fiction book club",
+        "Dark Fiction book club",
+        "Dark Fiction book club"
+      ]
+    },
+    {
+      "prefix": "drawing for the petrified",
+      "emoji": "✏️",
+      "count": 3,
+      "examples": [
+        "Drawing for the Petrified",
+        "Drawing for the Petrified",
+        "Drawing for the Petrified"
+      ]
+    },
+    {
+      "prefix": "fantasy book club",
+      "emoji": "📚",
+      "count": 3,
+      "examples": [
+        "Fantasy book club",
+        "Fantasy book club",
+        "Fantasy book club"
+      ]
+    },
+    {
+      "prefix": "hive mind improv jam",
+      "emoji": "😆",
+      "count": 3,
+      "examples": [
+        "Hive Mind Improv Jam",
+        "Hive Mind Improv Jam",
+        "Hive Mind Improv Jam"
+      ]
+    },
+    {
+      "prefix": "hot wrk ensemble live",
+      "emoji": "🎵",
+      "count": 3,
+      "examples": [
+        "Hot Wrk Ensemble LIVE!",
+        "Hot Wrk Ensemble LIVE!",
+        "Hot Wrk Ensemble LIVE!"
+      ]
+    },
+    {
+      "prefix": "howland cultural center open mic",
+      "emoji": "🎤",
+      "count": 3,
+      "examples": [
+        "Howland Cultural Center Open Mic",
+        "Howland Cultural Center Open Mic",
+        "Howland Cultural Center Open Mic"
+      ]
+    },
+    {
+      "prefix": "italo disco nite",
+      "emoji": "🪩",
+      "count": 3,
+      "examples": [
+        "Italo Disco Nite",
+        "Italo Disco Nite",
+        "Italo Disco Nite"
+      ]
+    },
+    {
+      "prefix": "jazz jam monday",
+      "emoji": "🎷",
+      "count": 3,
+      "examples": [
+        "Jazz Jam Monday",
+        "Jazz Jam Monday",
+        "Jazz Jam Monday"
+      ]
+    },
+    {
+      "prefix": "karaoke party",
+      "emoji": "🎤",
+      "count": 3,
+      "examples": [
+        "Karaoke Party",
+        "Karaoke Party",
+        "Karaoke Party"
+      ]
+    },
+    {
+      "prefix": "kill the buddha",
+      "emoji": "💬",
+      "count": 3,
+      "examples": [
+        "Kill the Buddha",
+        "Kill the Buddha",
+        "Kill the Buddha"
+      ]
+    },
+    {
+      "prefix": "kunkel kopchak w mike larocco",
+      "emoji": "🎵",
+      "count": 3,
+      "examples": [
+        "Kunkel & Kopchak w/ Mike LaRocco",
+        "Kunkel & Kopchak w/ Mike LaRocco",
+        "Kunkel & Kopchak w/ Mike LaRocco"
+      ]
+    },
+    {
+      "prefix": "lit lit writers open mic",
+      "emoji": "📚",
+      "count": 3,
+      "examples": [
+        "Lit Lit Writers Open Mic",
+        "Lit Lit Writers Open Mic",
+        "Lit Lit Writers Open Mic"
+      ]
+    },
+    {
+      "prefix": "mutual aid beacon food distribution",
+      "emoji": "🍅",
+      "count": 3,
+      "examples": [
+        "Mutual Aid Beacon Food Distribution",
+        "Mutual Aid Beacon Food Distribution",
+        "Mutual Aid Beacon Food Distribution"
+      ]
+    },
+    {
+      "prefix": "mutual aid beacon food distribution for seniors",
+      "emoji": "🍅",
+      "count": 3,
+      "examples": [
+        "Mutual Aid Beacon Food Distribution for Seniors",
+        "Mutual Aid Beacon Food Distribution for Seniors",
+        "Mutual Aid Beacon Food Distribution for Seniors"
+      ]
+    },
+    {
+      "prefix": "mystery book club",
+      "emoji": "📚",
+      "count": 3,
+      "examples": [
+        "Mystery book club",
+        "Mystery book club",
+        "Mystery book club"
+      ]
+    },
+    {
+      "prefix": "opening reception",
+      "emoji": "🖼️",
+      "count": 3,
+      "examples": [
+        "Opening Reception: “Out of Office”",
+        "Opening Reception: “Drift”",
+        "Opening Reception: “Philozoic Gestures”, “Experiments and Discoveries” and “Landforms”"
+      ]
+    },
+    {
+      "prefix": "poetry as protest and political action",
+      "emoji": "✊",
+      "count": 3,
+      "examples": [
+        "Poetry As Protest and Political Action",
+        "Poetry As Protest and Political Action",
+        "Poetry As Protest and Political Action"
+      ]
+    },
+    {
+      "prefix": "the trial",
+      "emoji": "🎭",
+      "count": 3,
+      "examples": [
+        "The Trial",
+        "The Trial",
+        "The Trial"
+      ]
+    }
+  ]
+}
