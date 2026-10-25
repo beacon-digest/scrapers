@@ -14,7 +14,8 @@ const TIME_ZONE = "America/New_York";
 const DEFAULT_MODEL = process.env.EVENT_FORMATTER_MODEL || "gpt-4o-mini";
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 200;
-const MAX_BATCH = 1;
+const MAX_BATCH = 5;
+const REVIEW_CONCURRENCY = 2;
 const NOTION_VERSION = "2022-06-28";
 const DEFAULT_DUPLICATE_HOLDS_PATH = resolve("config/event-formatter-duplicate-holds.json");
 const PLACEHOLDER_ICONS = new Set(["📸"]);
@@ -23,6 +24,7 @@ const VENUE_FALLBACK_EMOJI = [{ locationPrefix: "Towne Crier", emoji: "🎵" }];
 function parseArgs(argv) {
   const args = {
     apply: false,
+    all: false,
     deriveRules: false,
     limit: DEFAULT_LIMIT,
     ids: null,
@@ -36,6 +38,7 @@ function parseArgs(argv) {
     const arg = argv[i];
     if (arg === "--apply") args.apply = true;
     else if (arg === "--dry-run") args.apply = false;
+    else if (arg === "--all") args.all = true;
     else if (arg === "--derive-rules") args.deriveRules = true;
     else if (arg === "--limit") args.limit = Number(argv[++i]);
     else if (arg === "--ids") args.ids = argv[++i].split(",").map((id) => id.trim()).filter(Boolean);
@@ -45,11 +48,11 @@ function parseArgs(argv) {
     else if (arg === "--rules") args.rulesPath = resolve(argv[++i]);
     else if (arg === "--duplicate-holds") args.duplicateHoldsPath = resolve(argv[++i]);
     else if (arg === "--help") {
-      console.log("Usage: node scripts/format-unprocessed-events.mjs [--dry-run|--apply] [--limit N] [--ids PAGE_ID[,PAGE_ID]] [--from YYYY-MM-DD] [--through YYYY-MM-DD] [--derive-rules] [--rules path] [--duplicate-holds path] [--model name]");
+      console.log("Usage: node scripts/format-unprocessed-events.mjs [--dry-run|--apply] [--all|--limit N] [--ids PAGE_ID[,PAGE_ID]] [--from YYYY-MM-DD] [--through YYYY-MM-DD] [--derive-rules] [--rules path] [--duplicate-holds path] [--model name]");
       process.exit(0);
     } else throw new Error(`Unknown argument: ${arg}`);
   }
-  if (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > MAX_LIMIT) throw new Error(`--limit must be an integer from 1 through ${MAX_LIMIT}`);
+  if (!args.all && (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > MAX_LIMIT)) throw new Error(`--limit must be an integer from 1 through ${MAX_LIMIT}`);
   if (args.through && !/^\d{4}-\d{2}-\d{2}$/.test(args.through)) throw new Error("--through must use YYYY-MM-DD");
   if (args.ids && !args.ids.length) throw new Error("--ids must contain at least one Notion page ID");
   return args;
@@ -342,7 +345,7 @@ function selectEditableBlocks(ids, original) {
     .filter((block) => block && hasScraperArtifact(block.text));
 }
 
-async function reviewBatch(events, rules, model) {
+async function reviewBatch(events, rules, model, retry = false) {
   const reviewed = await openAIJson({
     task: "Review unpublished Beacon Digest event records without changing their factual context. For each event: choose an emoji only when its existing icon is null (otherwise preserve it); clean the title into natural title case while retaining the event name, meaningful age ranges, and essential identifiers; remove stage/room suffixes such as '- Salon Stage'; remove nonessential parenthetical logistics such as caregivers/siblings. Select only the IDs of editable text blocks that genuinely need cleanup for HTML artifacts, stray labels, repetition, or whitespace. Do not select well-formed prose merely to reprint it. Do not add facts, remove material event details, invent links, or rewrite event copy into marketing language. placeholder icon is not semantically meaningful and must never be chosen or preserved; classify it from the title and description instead. Apply `emoji_rules.rules` in ascending priority order: narrowly defined rules beat broad categories; use the default only if no rule applies. Preserve non-text and link-containing blocks by omission.",
     emoji_rules: { ...rules, rules: [...rules.rules].sort((left, right) => left.priority - right.priority) },
@@ -369,6 +372,17 @@ async function reviewBatch(events, rules, model) {
   }, model);
   if (!Array.isArray(reviewed.events)) throw new Error("Event formatter returned an invalid shape");
   const byId = new Map(reviewed.events.map((event) => [event.id, event]));
+  const missing = events.filter((event) => !byId.has(event.id));
+  if (missing.length && !retry) {
+    const recovered = await Promise.all(missing.map((event) => reviewBatch([event], rules, model, true)));
+    for (const [event] of recovered) byId.set(event.id, {
+      id: event.id,
+      emoji: event.proposed.emoji,
+      title: event.proposed.title,
+      clean_block_ids: event.proposed.selectedBlocks.map((block) => block.id),
+      summary: event.proposed.summary,
+    });
+  }
   return events.map((event) => {
     const proposal = byId.get(event.id);
     if (!proposal || typeof proposal.title !== "string") throw new Error(`Event formatter omitted ${event.id}`);
@@ -406,6 +420,21 @@ async function cleanOneBlock(event, block, model) {
   const text = reviewed.text.trim();
   if (!text || text.length > 1900 || text === block.text || introducesNewTokens(block.text, text)) return null;
   return { id: block.id, type: block.type, text };
+}
+
+async function mapWithConcurrency(items, concurrency, mapper) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+  async function worker() {
+    while (true) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= items.length) return;
+      results[index] = await mapper(items[index]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+  return results;
 }
 
 function changeSummary(event) {
@@ -479,7 +508,7 @@ async function main() {
   ] });
   const selectedPages = args.ids
     ? args.ids.map((id) => pages.find((page) => page.id === id)).filter(Boolean)
-    : pages.slice(0, args.limit);
+    : args.all ? pages : pages.slice(0, args.limit);
   if (args.ids && selectedPages.length !== args.ids.length) throw new Error("One or more --ids pages are no longer eligible");
   const allVisible = await queryAll({ and: [
     { property: "Hidden", checkbox: { equals: false } },
@@ -497,10 +526,8 @@ async function main() {
     enriched.push({ ...event, editableBlocks: extracted.supported, preservedBlocks: extracted.preserved });
   }
   const rules = loadRules(args.rulesPath);
-  const reviewed = [];
-  for (let index = 0; index < enriched.length; index += MAX_BATCH) {
-    reviewed.push(...await reviewBatch(enriched.slice(index, index + MAX_BATCH), rules, args.model));
-  }
+  const batches = Array.from({ length: Math.ceil(enriched.length / MAX_BATCH) }, (_, index) => enriched.slice(index * MAX_BATCH, (index + 1) * MAX_BATCH));
+  const reviewed = (await mapWithConcurrency(batches, REVIEW_CONCURRENCY, (batch) => reviewBatch(batch, rules, args.model))).flat();
   for (const event of reviewed) {
     for (const block of event.proposed.selectedBlocks) {
       const cleaned = await cleanOneBlock(event, block, args.model);
@@ -512,6 +539,7 @@ async function main() {
     mode: args.apply ? "apply" : "dry-run",
     from,
     through: args.through || null,
+    all: args.all,
     eligible: pages.length,
     reviewed: reviewed.length,
     model: args.model,
