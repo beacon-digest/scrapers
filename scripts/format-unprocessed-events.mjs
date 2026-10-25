@@ -130,6 +130,11 @@ function contentFallbackEmoji(event) {
   return /\b(live\s+music|musical|guitarist|band|singer|concert)\b/.test(text) ? "🎵" : null;
 }
 
+function teenOrOlderAudience(event) {
+  const text = [event.title, ...(event.editableBlocks || []).map((block) => block.text)].join(" ").toLowerCase();
+  return /\bteens?\b|\btweens?\b|grades?\s*(?:[6-9]|1[0-2])\b/.test(text);
+}
+
 const TEXT_BLOCK_TYPES = new Set(["paragraph", "heading_1", "heading_2", "heading_3", "bulleted_list_item", "numbered_list_item", "quote", "callout", "toggle"]);
 
 function extractTextBlocks(blocks) {
@@ -282,11 +287,25 @@ function introducesNewTokens(before, after) {
   return wordTokens(after).some((token) => !original.has(token));
 }
 
+function titleAgeOrGradeMarkers(text) {
+  return (text.toLowerCase().match(/(?:ages?\s*\d+(?:\s*(?:-|–|to)\s*\d+|\+)?|grades?\s*[a-z0-9]+(?:\s*(?:-|–|to)\s*[a-z0-9]+)?)/g) || [])
+    .map((marker) => marker.replace(/\s+/g, " ").trim());
+}
+
+function preservesTitleAgeOrGradeMarkers(before, after) {
+  const normalized = after.toLowerCase().replace(/\s+/g, " ");
+  return titleAgeOrGradeMarkers(before).every((marker) => normalized.includes(marker));
+}
+
+function hasScraperArtifact(text) {
+  return /<[^>]+>|&(?:nbsp|amp|quot|#\d+);|\u00a0|\$\s+\d|\|\s*\S|^(?:location|address):\s*/im.test(text);
+}
+
 function selectEditableBlocks(ids, original) {
   const byId = new Map(original.map((block) => [block.id, block]));
   return [...new Set((ids || []).filter((id) => typeof id === "string"))]
     .map((id) => byId.get(id))
-    .filter(Boolean);
+    .filter((block) => block && hasScraperArtifact(block.text));
 }
 
 async function reviewBatch(events, rules, model) {
@@ -320,11 +339,12 @@ async function reviewBatch(events, rules, model) {
     const proposal = byId.get(event.id);
     if (!proposal || typeof proposal.title !== "string") throw new Error(`Event formatter omitted ${event.id}`);
     const proposedTitle = proposal.title.trim();
-    const title = !proposedTitle || proposedTitle.length > 1900 || introducesNewTokens(event.title, proposedTitle)
+    const title = !proposedTitle || proposedTitle.length > 1900 || introducesNewTokens(event.title, proposedTitle) || !preservesTitleAgeOrGradeMarkers(event.title, proposedTitle)
       ? event.title
       : proposedTitle;
     const preservedIcon = iconToPreserve(event.icon);
-    const proposedEmoji = typeof proposal.emoji === "string" ? proposal.emoji.trim() : "";
+    let proposedEmoji = typeof proposal.emoji === "string" ? proposal.emoji.trim() : "";
+    if (proposedEmoji === "👶" && teenOrOlderAudience(event)) proposedEmoji = "🧒";
     const needsFallback = proposedEmoji === rules.default_emoji || PLACEHOLDER_ICONS.has(proposedEmoji);
     const emoji = preservedIcon || emojiFromSeries(title, rules) || (needsFallback ? venueFallbackEmoji(event.location) || contentFallbackEmoji(event) || rules.default_emoji : proposedEmoji);
     if (!title || !emoji || [...emoji].length > 8) throw new Error(`Invalid formatted values for ${event.id}`);
@@ -343,7 +363,7 @@ async function reviewBatch(events, rules, model) {
 
 async function cleanOneBlock(event, block, model) {
   const reviewed = await openAIJson({
-    task: "Clean one editable Notion text block for a Beacon Digest event. Preserve every material fact, proper name, date, time, price, age range, instruction, URL, and contact detail. Only remove HTML/scraper artifacts, redundant labels, and excess whitespace; make paragraph text read naturally. Return the original text unchanged if no cleanup is needed.",
+    task: "Clean one editable Notion text block for a Beacon Digest event. Preserve every material fact, proper name, date, time, price, age range, instruction, URL, and contact detail. Only remove HTML/scraper artifacts, redundant labels, and excess whitespace; make paragraph text read naturally. Do not make editorial grammar, capitalization, punctuation, or style changes unless needed to remove an identified artifact. Return the original text unchanged if no cleanup is needed.",
     event: { title: event.proposed.title, date: event.date, location: event.location, website: event.website },
     block: { id: block.id, type: block.type, text: block.text },
     response_schema: { id: block.id, text: "cleaned plain text" },
