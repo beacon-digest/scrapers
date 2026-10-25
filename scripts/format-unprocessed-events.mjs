@@ -357,21 +357,23 @@ async function updateBlock(block) {
 async function applyOne(event) {
   const current = await currentPageIsEligible(event);
   if (!current) return { status: "skipped_concurrent_change", id: event.id };
-  for (const block of event.proposed.blocks) await updateBlock(block);
   await notion(`/pages/${event.id}`, "PATCH", {
     icon: { type: "emoji", emoji: event.proposed.emoji },
-    properties: {
-      Name: { title: [{ type: "text", text: { content: event.proposed.title } }] },
-      Processed: { checkbox: true },
-    },
+    properties: { Name: { title: [{ type: "text", text: { content: event.proposed.title } }] } },
   });
-  const verifiedPage = eventFromPage(await notion(`/pages/${event.id}`));
-  if (!verifiedPage.processed || verifiedPage.title !== event.proposed.title || verifiedPage.icon !== event.proposed.emoji) {
-    throw new Error(`Read-back failed for ${event.id}`);
+  const contentPage = eventFromPage(await notion(`/pages/${event.id}`));
+  if (contentPage.processed || contentPage.title !== event.proposed.title || contentPage.icon !== event.proposed.emoji) {
+    throw new Error(`Page content read-back failed for ${event.id}`);
   }
+  for (const block of event.proposed.blocks) await updateBlock(block);
   const verifiedBlocks = new Map(extractTextBlocks(await children(event.id)).supported.map((block) => [block.id, block.text]));
   for (const block of event.proposed.blocks) {
     if (verifiedBlocks.get(block.id) !== block.text) throw new Error(`Block read-back failed for ${event.id}`);
+  }
+  await notion(`/pages/${event.id}`, "PATCH", { properties: { Processed: { checkbox: true } } });
+  const verifiedPage = eventFromPage(await notion(`/pages/${event.id}`));
+  if (!verifiedPage.processed || verifiedPage.title !== event.proposed.title || verifiedPage.icon !== event.proposed.emoji) {
+    throw new Error(`Final read-back failed for ${event.id}`);
   }
   return { status: "modified", id: event.id };
 }
