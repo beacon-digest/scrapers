@@ -15,12 +15,15 @@ const DEFAULT_MODEL = process.env.EVENT_FORMATTER_MODEL || "gpt-4o-mini";
 const DEFAULT_LIMIT = 10;
 const MAX_BATCH = 1;
 const NOTION_VERSION = "2022-06-28";
+const PLACEHOLDER_ICONS = new Set(["📸"]);
+const VENUE_FALLBACK_EMOJI = [{ locationPrefix: "Towne Crier", emoji: "🎵" }];
 
 function parseArgs(argv) {
   const args = {
     apply: false,
     deriveRules: false,
     limit: DEFAULT_LIMIT,
+    ids: null,
     from: null,
     model: DEFAULT_MODEL,
     rulesPath: resolve("config/beacon-emoji-rules.json"),
@@ -31,15 +34,17 @@ function parseArgs(argv) {
     else if (arg === "--dry-run") args.apply = false;
     else if (arg === "--derive-rules") args.deriveRules = true;
     else if (arg === "--limit") args.limit = Number(argv[++i]);
+    else if (arg === "--ids") args.ids = argv[++i].split(",").map((id) => id.trim()).filter(Boolean);
     else if (arg === "--from") args.from = argv[++i];
     else if (arg === "--model") args.model = argv[++i];
     else if (arg === "--rules") args.rulesPath = resolve(argv[++i]);
     else if (arg === "--help") {
-      console.log("Usage: node scripts/format-unprocessed-events.mjs [--dry-run|--apply] [--limit N] [--from YYYY-MM-DD] [--derive-rules] [--rules path] [--model name]");
+      console.log("Usage: node scripts/format-unprocessed-events.mjs [--dry-run|--apply] [--limit N] [--ids PAGE_ID[,PAGE_ID]] [--from YYYY-MM-DD] [--derive-rules] [--rules path] [--model name]");
       process.exit(0);
     } else throw new Error(`Unknown argument: ${arg}`);
   }
   if (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 50) throw new Error("--limit must be an integer from 1 through 50");
+  if (args.ids && !args.ids.length) throw new Error("--ids must contain at least one Notion page ID");
   return args;
 }
 
@@ -109,6 +114,20 @@ function eventFromPage(page) {
     published: p.Published?.checkbox === true,
     hidden: p.Hidden?.checkbox === true,
   };
+}
+
+function iconToPreserve(icon) {
+  return icon && !PLACEHOLDER_ICONS.has(icon) ? icon : null;
+}
+
+function venueFallbackEmoji(location) {
+  const rule = VENUE_FALLBACK_EMOJI.find((candidate) => location?.startsWith(candidate.locationPrefix));
+  return rule?.emoji || null;
+}
+
+function contentFallbackEmoji(event) {
+  const text = [event.title, ...(event.editableBlocks || []).map((block) => block.text)].join(" ").toLowerCase();
+  return /\b(live\s+music|musical|guitarist|band|singer|concert)\b/.test(text) ? "🎵" : null;
 }
 
 const TEXT_BLOCK_TYPES = new Set(["paragraph", "heading_1", "heading_2", "heading_3", "bulleted_list_item", "numbered_list_item", "quote", "callout", "toggle"]);
@@ -272,7 +291,7 @@ function selectEditableBlocks(ids, original) {
 
 async function reviewBatch(events, rules, model) {
   const reviewed = await openAIJson({
-    task: "Review unpublished Beacon Digest event records without changing their factual context. For each event: choose an emoji only when its existing icon is null (otherwise preserve it); clean the title into natural title case while retaining the event name, meaningful age ranges, and essential identifiers; remove stage/room suffixes such as '- Salon Stage'; remove nonessential parenthetical logistics such as caregivers/siblings. Select only the IDs of editable text blocks that genuinely need cleanup for HTML artifacts, stray labels, repetition, or whitespace. Do not select well-formed prose merely to reprint it. Do not add facts, remove material event details, invent links, or rewrite event copy into marketing language. Apply `emoji_rules.rules` in ascending priority order: narrowly defined rules beat broad categories; use the default only if no rule applies. Preserve non-text and link-containing blocks by omission.",
+    task: "Review unpublished Beacon Digest event records without changing their factual context. For each event: choose an emoji only when its existing icon is null (otherwise preserve it); clean the title into natural title case while retaining the event name, meaningful age ranges, and essential identifiers; remove stage/room suffixes such as '- Salon Stage'; remove nonessential parenthetical logistics such as caregivers/siblings. Select only the IDs of editable text blocks that genuinely need cleanup for HTML artifacts, stray labels, repetition, or whitespace. Do not select well-formed prose merely to reprint it. Do not add facts, remove material event details, invent links, or rewrite event copy into marketing language. placeholder icon is not semantically meaningful and must never be chosen or preserved; classify it from the title and description instead. Apply `emoji_rules.rules` in ascending priority order: narrowly defined rules beat broad categories; use the default only if no rule applies. Preserve non-text and link-containing blocks by omission.",
     emoji_rules: { ...rules, rules: [...rules.rules].sort((left, right) => left.priority - right.priority) },
     events: events.map((event) => ({
       id: event.id,
@@ -280,7 +299,8 @@ async function reviewBatch(events, rules, model) {
       date: event.date,
       location: event.location,
       website: event.website,
-      existing_icon: event.icon,
+      existing_icon: iconToPreserve(event.icon),
+      placeholder_icon: PLACEHOLDER_ICONS.has(event.icon) ? event.icon : null,
       editable_blocks: event.editableBlocks,
       preserved_blocks: event.preservedBlocks,
     })),
@@ -303,7 +323,10 @@ async function reviewBatch(events, rules, model) {
     const title = !proposedTitle || proposedTitle.length > 1900 || introducesNewTokens(event.title, proposedTitle)
       ? event.title
       : proposedTitle;
-    const emoji = event.icon || emojiFromSeries(title, rules) || (typeof proposal.emoji === "string" ? proposal.emoji.trim() : "");
+    const preservedIcon = iconToPreserve(event.icon);
+    const proposedEmoji = typeof proposal.emoji === "string" ? proposal.emoji.trim() : "";
+    const needsFallback = proposedEmoji === rules.default_emoji || PLACEHOLDER_ICONS.has(proposedEmoji);
+    const emoji = preservedIcon || emojiFromSeries(title, rules) || (needsFallback ? venueFallbackEmoji(event.location) || contentFallbackEmoji(event) || rules.default_emoji : proposedEmoji);
     if (!title || !emoji || [...emoji].length > 8) throw new Error(`Invalid formatted values for ${event.id}`);
     return {
       ...event,
@@ -334,7 +357,7 @@ async function cleanOneBlock(event, block, model) {
 function changeSummary(event) {
   const changes = [];
   if (event.title !== event.proposed.title) changes.push("title cleaned");
-  if (!event.icon) changes.push(`emoji set to ${event.proposed.emoji}`);
+  if (!iconToPreserve(event.icon)) changes.push(`emoji set to ${event.proposed.emoji}`);
   if (event.proposed.blocks.length) changes.push(`${event.proposed.blocks.length} description block${event.proposed.blocks.length === 1 ? "" : "s"} cleaned`);
   return changes.length ? changes.join("; ") : "no visible content change; will mark processed after review";
 }
@@ -394,7 +417,11 @@ async function main() {
     { property: "Processed", checkbox: { equals: false } },
     { property: "Date", date: { on_or_after: from } },
   ] });
-  const selected = pages.slice(0, args.limit).map(eventFromPage);
+  const selectedPages = args.ids
+    ? args.ids.map((id) => pages.find((page) => page.id === id)).filter(Boolean)
+    : pages.slice(0, args.limit);
+  if (args.ids && selectedPages.length !== args.ids.length) throw new Error("One or more --ids pages are no longer eligible");
+  const selected = selectedPages.map(eventFromPage);
   const enriched = [];
   for (const event of selected) {
     const extracted = extractTextBlocks(await children(event.id));
