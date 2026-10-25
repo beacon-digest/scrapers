@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "holds": [
+    {
+      "page_id": "4010890f-e9ff-81a1-92a6-e3e498db024c",
+      "canonical_page_id": "4020890f-e9ff-81e9-9e09-c36a8b854bef",
+      "reason": "Truncated same-time/same-location companion record; held by explicit review."
+    }
+  ]
+}

@@ -13,8 +13,10 @@ import { loadDotEnv } from "./audit-notion-duplicates.mjs";
 const TIME_ZONE = "America/New_York";
 const DEFAULT_MODEL = process.env.EVENT_FORMATTER_MODEL || "gpt-4o-mini";
 const DEFAULT_LIMIT = 10;
+const MAX_LIMIT = 200;
 const MAX_BATCH = 1;
 const NOTION_VERSION = "2022-06-28";
+const DEFAULT_DUPLICATE_HOLDS_PATH = resolve("config/event-formatter-duplicate-holds.json");
 const PLACEHOLDER_ICONS = new Set(["📸"]);
 const VENUE_FALLBACK_EMOJI = [{ locationPrefix: "Towne Crier", emoji: "🎵" }];
 
@@ -25,8 +27,10 @@ function parseArgs(argv) {
     limit: DEFAULT_LIMIT,
     ids: null,
     from: null,
+    through: null,
     model: DEFAULT_MODEL,
     rulesPath: resolve("config/beacon-emoji-rules.json"),
+    duplicateHoldsPath: DEFAULT_DUPLICATE_HOLDS_PATH,
   };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -36,14 +40,17 @@ function parseArgs(argv) {
     else if (arg === "--limit") args.limit = Number(argv[++i]);
     else if (arg === "--ids") args.ids = argv[++i].split(",").map((id) => id.trim()).filter(Boolean);
     else if (arg === "--from") args.from = argv[++i];
+    else if (arg === "--through") args.through = argv[++i];
     else if (arg === "--model") args.model = argv[++i];
     else if (arg === "--rules") args.rulesPath = resolve(argv[++i]);
+    else if (arg === "--duplicate-holds") args.duplicateHoldsPath = resolve(argv[++i]);
     else if (arg === "--help") {
-      console.log("Usage: node scripts/format-unprocessed-events.mjs [--dry-run|--apply] [--limit N] [--ids PAGE_ID[,PAGE_ID]] [--from YYYY-MM-DD] [--derive-rules] [--rules path] [--model name]");
+      console.log("Usage: node scripts/format-unprocessed-events.mjs [--dry-run|--apply] [--limit N] [--ids PAGE_ID[,PAGE_ID]] [--from YYYY-MM-DD] [--through YYYY-MM-DD] [--derive-rules] [--rules path] [--duplicate-holds path] [--model name]");
       process.exit(0);
     } else throw new Error(`Unknown argument: ${arg}`);
   }
-  if (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 50) throw new Error("--limit must be an integer from 1 through 50");
+  if (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > MAX_LIMIT) throw new Error(`--limit must be an integer from 1 through ${MAX_LIMIT}`);
+  if (args.through && !/^\d{4}-\d{2}-\d{2}$/.test(args.through)) throw new Error("--through must use YYYY-MM-DD");
   if (args.ids && !args.ids.length) throw new Error("--ids must contain at least one Notion page ID");
   return args;
 }
@@ -278,6 +285,15 @@ function loadRules(path) {
   return rules;
 }
 
+function loadDuplicateHolds(path) {
+  if (!existsSync(path)) return new Map();
+  const data = JSON.parse(readFileSync(path, "utf8"));
+  if (!Array.isArray(data.holds)) throw new Error(`Invalid duplicate holds at ${path}`);
+  return new Map(data.holds
+    .filter((hold) => typeof hold.page_id === "string" && typeof hold.canonical_page_id === "string")
+    .map((hold) => [hold.page_id, hold.canonical_page_id]));
+}
+
 function wordTokens(value) {
   return (value.toLowerCase().replace(/[’'`]/g, "").match(/[a-z0-9]+/g) || []);
 }
@@ -449,25 +465,29 @@ async function main() {
     return;
   }
   const from = args.from || localDate();
+  const dateFilter = [
+    { property: "Date", date: { on_or_after: from } },
+    ...(args.through ? [{ property: "Date", date: { on_or_before: args.through } }] : []),
+  ];
   const pages = await queryAll({ and: [
     { property: "Published", checkbox: { equals: false } },
     { property: "Hidden", checkbox: { equals: false } },
     { property: "Processed", checkbox: { equals: false } },
-    { property: "Date", date: { on_or_after: from } },
+    ...dateFilter,
   ] });
   const selectedPages = args.ids
     ? args.ids.map((id) => pages.find((page) => page.id === id)).filter(Boolean)
     : pages.slice(0, args.limit);
   if (args.ids && selectedPages.length !== args.ids.length) throw new Error("One or more --ids pages are no longer eligible");
-  const allUnpublished = await queryAll({ and: [
-    { property: "Published", checkbox: { equals: false } },
+  const allVisible = await queryAll({ and: [
     { property: "Hidden", checkbox: { equals: false } },
-    { property: "Date", date: { on_or_after: from } },
+    ...dateFilter,
   ] });
-  const duplicateCandidates = allUnpublished.map(eventFromPage);
+  const duplicateCandidates = allVisible.map(eventFromPage);
+  const duplicateHolds = loadDuplicateHolds(args.duplicateHoldsPath);
   const selected = selectedPages.map((page) => {
     const event = eventFromPage(page);
-    return { ...event, duplicateOf: likelyDuplicateOf(event, duplicateCandidates) };
+    return { ...event, duplicateOf: duplicateHolds.get(event.id) || likelyDuplicateOf(event, duplicateCandidates) };
   });
   const enriched = [];
   for (const event of selected) {
@@ -489,6 +509,7 @@ async function main() {
   const result = {
     mode: args.apply ? "apply" : "dry-run",
     from,
+    through: args.through || null,
     eligible: pages.length,
     reviewed: reviewed.length,
     model: args.model,
