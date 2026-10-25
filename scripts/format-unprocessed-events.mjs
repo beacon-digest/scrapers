@@ -314,7 +314,9 @@ function preservesTitleAgeOrGradeMarkers(before, after) {
 }
 
 function canonicalizeTitleQualifiers(title) {
-  return title.replace(/\(\s*for\s+(grades?\b)/gi, "($1");
+  return title
+    .replace(/\(\s*recommended\s+for\s+ages?\s+(\d+(?:\s*(?:-|–|to)\s*\d+|\+)?)\s*\)/gi, "(Ages $1)")
+    .replace(/\(\s*for\s+(grades?\b)/gi, "($1");
 }
 
 function likelyDuplicateOf(event, candidates) {
