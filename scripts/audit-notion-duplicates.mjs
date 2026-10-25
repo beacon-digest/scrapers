@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 
 const TIME_ZONE = "America/New_York";
 const DEFAULT_MODEL = process.env.DUPLICATE_AUDIT_MODEL || "gpt-4o-mini";
-const DEFAULT_LOOKBACK_DAYS = 7;
+const DEFAULT_LOOKBACK_DAYS = 0;
 const DEFAULT_LOOKAHEAD_DAYS = 120;
 
 export function loadDotEnv(path = resolve(process.cwd(), ".env")) {
