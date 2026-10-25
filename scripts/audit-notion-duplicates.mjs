@@ -28,9 +28,18 @@ export function loadDotEnv(path = resolve(process.cwd(), ".env")) {
     if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1);
     }
-    // This repository's local `.env` is the explicit runtime configuration for
-    // the audit. It must take precedence over a stale inherited environment.
-    process.env[match[1]] = value;
+    // Accept the common local shorthand too, while keeping OPENAI_API_KEY as
+    // the canonical name consumed by the classifier.
+    if (match[1] === "OPEN_API_KEY" && !process.env.OPENAI_API_KEY) {
+      process.env.OPENAI_API_KEY = value;
+      continue;
+    }
+    // Prefer a repository-local OpenAI key over a stale inherited credential,
+    // but otherwise preserve the established process environment (including the
+    // production Notion connection used by the existing scraper runtime).
+    if (match[1] === "OPENAI_API_KEY" || !process.env[match[1]]) {
+      process.env[match[1]] = value;
+    }
   }
 }
 
