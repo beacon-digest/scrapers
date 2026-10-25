@@ -315,7 +315,7 @@ function preservesTitleAgeOrGradeMarkers(before, after) {
 
 function canonicalizeTitleQualifiers(title) {
   return title
-    .replace(/\(\s*recommended\s+for\s+ages?\s+(\d+(?:\s*(?:-|–|to)\s*\d+|\+)?)\s*\)/gi, "(Ages $1)")
+    .replace(/\(\s*(?:(?:recommended\s+)?for\s+)?ages?\s+(\d+(?:\s*(?:-|–|to)\s*\d+|\+)?)(?:\s+(?:with|w\/)\b[^)]*|,\s*(?:caregivers?|siblings?)[^)]*)?\s*\)/gi, "(Ages $1)")
     .replace(/\(\s*for\s+(grades?\b)/gi, "($1");
 }
 
