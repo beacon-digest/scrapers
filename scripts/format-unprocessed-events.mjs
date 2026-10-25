@@ -297,6 +297,22 @@ function preservesTitleAgeOrGradeMarkers(before, after) {
   return titleAgeOrGradeMarkers(before).every((marker) => normalized.includes(marker));
 }
 
+function canonicalizeTitleQualifiers(title) {
+  return title.replace(/\(\s*for\s+(grades?\b)/gi, "($1");
+}
+
+function likelyDuplicateOf(event, candidates) {
+  const titleTokens = wordTokens(event.title);
+  if (titleTokens.length < 3) return null;
+  for (const candidate of candidates) {
+    if (candidate.id === event.id || candidate.date !== event.date || candidate.location !== event.location) continue;
+    const otherTokens = wordTokens(candidate.title);
+    if (otherTokens.length < titleTokens.length + 2) continue;
+    if (titleTokens.every((token, index) => otherTokens[index] === token)) return candidate.id;
+  }
+  return null;
+}
+
 function hasScraperArtifact(text) {
   return /<[^>]+>|&(?:nbsp|amp|quot|#\d+);|\u00a0|\$\s+\d|\|\s*\S|^(?:location|address):\s*/im.test(text);
 }
@@ -338,9 +354,9 @@ async function reviewBatch(events, rules, model) {
   return events.map((event) => {
     const proposal = byId.get(event.id);
     if (!proposal || typeof proposal.title !== "string") throw new Error(`Event formatter omitted ${event.id}`);
-    const proposedTitle = proposal.title.trim();
+    const proposedTitle = canonicalizeTitleQualifiers(proposal.title.trim());
     const title = !proposedTitle || proposedTitle.length > 1900 || introducesNewTokens(event.title, proposedTitle) || !preservesTitleAgeOrGradeMarkers(event.title, proposedTitle)
-      ? event.title
+      ? canonicalizeTitleQualifiers(event.title)
       : proposedTitle;
     const preservedIcon = iconToPreserve(event.icon);
     let proposedEmoji = typeof proposal.emoji === "string" ? proposal.emoji.trim() : "";
@@ -375,6 +391,7 @@ async function cleanOneBlock(event, block, model) {
 }
 
 function changeSummary(event) {
+  if (event.duplicateOf) return `likely duplicate of ${event.duplicateOf}; will not be modified or marked processed`;
   const changes = [];
   if (event.title !== event.proposed.title) changes.push("title cleaned");
   if (!iconToPreserve(event.icon)) changes.push(`emoji set to ${event.proposed.emoji}`);
@@ -398,6 +415,7 @@ async function updateBlock(block) {
 }
 
 async function applyOne(event) {
+  if (event.duplicateOf) return { status: "skipped_likely_duplicate", id: event.id, duplicate_of: event.duplicateOf };
   const current = await currentPageIsEligible(event);
   if (!current) return { status: "skipped_concurrent_change", id: event.id };
   await notion(`/pages/${event.id}`, "PATCH", {
@@ -441,7 +459,16 @@ async function main() {
     ? args.ids.map((id) => pages.find((page) => page.id === id)).filter(Boolean)
     : pages.slice(0, args.limit);
   if (args.ids && selectedPages.length !== args.ids.length) throw new Error("One or more --ids pages are no longer eligible");
-  const selected = selectedPages.map(eventFromPage);
+  const allUnpublished = await queryAll({ and: [
+    { property: "Published", checkbox: { equals: false } },
+    { property: "Hidden", checkbox: { equals: false } },
+    { property: "Date", date: { on_or_after: from } },
+  ] });
+  const duplicateCandidates = allUnpublished.map(eventFromPage);
+  const selected = selectedPages.map((page) => {
+    const event = eventFromPage(page);
+    return { ...event, duplicateOf: likelyDuplicateOf(event, duplicateCandidates) };
+  });
   const enriched = [];
   for (const event of selected) {
     const extracted = extractTextBlocks(await children(event.id));
@@ -470,6 +497,7 @@ async function main() {
       url: event.url,
       date: event.date,
       location: event.location,
+      duplicate_of: event.duplicateOf || null,
       before: { title: event.title, icon: event.icon },
       after: { title: event.proposed.title, icon: event.proposed.emoji, changed_blocks: event.proposed.blocks.length },
       description_changes: event.proposed.blocks.map((block) => ({
