@@ -272,8 +272,8 @@ function selectEditableBlocks(ids, original) {
 
 async function reviewBatch(events, rules, model) {
   const reviewed = await openAIJson({
-    task: "Review unpublished Beacon Digest event records without changing their factual context. For each event: choose an emoji only when its existing icon is null (otherwise preserve it); clean the title into natural title case while retaining the event name, meaningful age ranges, and essential identifiers; remove stage/room suffixes such as '- Salon Stage'; remove nonessential parenthetical logistics such as caregivers/siblings. Select only the IDs of editable text blocks that genuinely need cleanup for HTML artifacts, stray labels, repetition, or whitespace. Do not select well-formed prose merely to reprint it. Do not add facts, remove material event details, invent links, or rewrite event copy into marketing language. Preserve non-text and link-containing blocks by omission.",
-    emoji_rules: rules,
+    task: "Review unpublished Beacon Digest event records without changing their factual context. For each event: choose an emoji only when its existing icon is null (otherwise preserve it); clean the title into natural title case while retaining the event name, meaningful age ranges, and essential identifiers; remove stage/room suffixes such as '- Salon Stage'; remove nonessential parenthetical logistics such as caregivers/siblings. Select only the IDs of editable text blocks that genuinely need cleanup for HTML artifacts, stray labels, repetition, or whitespace. Do not select well-formed prose merely to reprint it. Do not add facts, remove material event details, invent links, or rewrite event copy into marketing language. Apply `emoji_rules.rules` in ascending priority order: narrowly defined rules beat broad categories; use the default only if no rule applies. Preserve non-text and link-containing blocks by omission.",
+    emoji_rules: { ...rules, rules: [...rules.rules].sort((left, right) => left.priority - right.priority) },
     events: events.map((event) => ({
       id: event.id,
       title: event.title,

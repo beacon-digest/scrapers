@@ -8,9 +8,9 @@
   "default_emoji": "📅",
   "rules": [
     {
-      "priority": 1,
+      "priority": 20,
       "emoji": "🎵",
-      "when": "Music events",
+      "when": "General live-music events not covered by a more specific music rule",
       "examples": [
         "Cosmokaze",
         "Tina Ross",
@@ -18,9 +18,9 @@
       ]
     },
     {
-      "priority": 2,
+      "priority": 80,
       "emoji": "🗂️",
-      "when": "Trivia events",
+      "when": "General or recurring bar-trivia events",
       "examples": [
         "Trivia Night",
         "Geeks Who Drink Trivia"
@@ -54,9 +54,9 @@
       ]
     },
     {
-      "priority": 6,
+      "priority": 80,
       "emoji": "🧒",
-      "when": "Children's events",
+      "when": "Children's events not covered by an early-childhood or kids-D&D rule",
       "examples": [
         "Pajama Storytime",
         "Kind Creators"
@@ -72,26 +72,26 @@
       ]
     },
     {
-      "priority": 8,
+      "priority": 80,
       "emoji": "🍳",
-      "when": "Food-related events",
+      "when": "General food-related events not covered by a meal-service or food-distribution rule",
       "examples": [
         "Free Breakfast for Anyone in Need"
       ]
     },
     {
-      "priority": 9,
+      "priority": 80,
       "emoji": "♟️",
-      "when": "Game clubs",
+      "when": "General game clubs not covered by a specific game rule",
       "examples": [
         "Beacon Chess Club",
         "Drop-In Game Club"
       ]
     },
     {
-      "priority": 10,
+      "priority": 80,
       "emoji": "💬",
-      "when": "Classes or workshops",
+      "when": "General classes or workshops not covered by a subject-specific rule",
       "examples": [
         "BOCES Class"
       ]
@@ -105,9 +105,9 @@
       ]
     },
     {
-      "priority": 12,
+      "priority": 80,
       "emoji": "💃",
-      "when": "Dance events",
+      "when": "General social-dance, Latin-dance, or drag events",
       "examples": [
         "Drag Show",
         "Salsa Sunday"
@@ -142,7 +142,7 @@
     {
       "priority": 16,
       "emoji": "🍽️",
-      "when": "Food distribution events",
+      "when": "Meal-service, welcome-table, or non-Mutual-Aid food-distribution events",
       "examples": [
         "Fareground Welcome Table"
       ]
@@ -204,9 +204,9 @@
       ]
     },
     {
-      "priority": 24,
+      "priority": 80,
       "emoji": "⚔️",
-      "when": "Dungeons & Dragons events",
+      "when": "Dungeons & Dragons events not specifically for children",
       "examples": [
         "Dungeons & Dragons"
       ]
@@ -300,7 +300,7 @@
       ]
     },
     {
-      "priority": 36,
+      "priority": 10,
       "emoji": "🎸",
       "when": "Music tribute events",
       "examples": [
@@ -316,9 +316,9 @@
       ]
     },
     {
-      "priority": 38,
+      "priority": 80,
       "emoji": "🌈",
-      "when": "LGBTQ+ events",
+      "when": "LGBTQ+ events (canonical rule for new events)",
       "examples": [
         "Queer Speed Friending"
       ]
@@ -332,7 +332,7 @@
       ]
     },
     {
-      "priority": 40,
+      "priority": 10,
       "emoji": "🪩",
       "when": "Dance music events",
       "examples": [
@@ -340,9 +340,9 @@
       ]
     },
     {
-      "priority": 41,
+      "priority": 10,
       "emoji": "🍅",
-      "when": "Food distribution events",
+      "when": "Mutual Aid Beacon food-distribution events",
       "examples": [
         "Mutual Aid Beacon Food Distribution"
       ]
@@ -404,9 +404,9 @@
       ]
     },
     {
-      "priority": 49,
+      "priority": 10,
       "emoji": "❓",
-      "when": "Trivia events",
+      "when": "Themed or novelty trivia other than movie trivia",
       "examples": [
         "Trivia Hangover"
       ]
@@ -428,7 +428,7 @@
       ]
     },
     {
-      "priority": 52,
+      "priority": 10,
       "emoji": "🎷",
       "when": "Jazz events",
       "examples": [
@@ -444,15 +444,7 @@
       ]
     },
     {
-      "priority": 54,
-      "emoji": "🏳️‍🌈",
-      "when": "LGBTQ+ events",
-      "examples": [
-        "Hot Gays Walk"
-      ]
-    },
-    {
-      "priority": 55,
+      "priority": 10,
       "emoji": "🎻",
       "when": "Fiddle tune jams",
       "examples": [
@@ -460,7 +452,7 @@
       ]
     },
     {
-      "priority": 56,
+      "priority": 5,
       "emoji": "🎬",
       "when": "Movie trivia events",
       "examples": [
@@ -494,7 +486,9 @@
   ],
   "notes": [
     "Existing manually assigned event icons remain unchanged.",
-    "Default emoji is used for uncategorized events."
+    "Known recurring series override category rules.",
+    "Rules are evaluated by ascending priority; narrow rules precede broad categories.",
+    "The generic fallback is used only for uncategorized events."
   ],
   "series_rules": [
     {
